@@ -814,3 +814,1021 @@ Results:
 Interpretation: The customer base had an average age of approximately 36 years, with a median of 36 years. Most customers were concentrated between the ages of 29 and 43, indicating a relatively young to middle-aged customer population.
 
 ![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Age%20Distribution%20and%20Boxplot.png)
+
+**Annual Income Distribution**
+
+Annual income was examined to understand the income characteristics and variation across customers.
+
+Python Implementation:
+```python
+# Descriptive statistics
+customer_demographics['annual_income_ngn'].describe()
+```
+
+Results:
+| Statistic | Annual Income (NGN) |
+|---|---:|
+| Customers | 10,000 |
+| Mean | 3,947,983 |
+| Standard Deviation | 34,564,000 |
+| Minimum | 350,000 |
+| 25th Percentile | 1,667,534 |
+| Median | 2,378,022 |
+| 75th Percentile | 3,393,782 |
+| Maximum | 1,000,000,000 |
+
+Interpretation: The median annual income was approximately ₦2.38 million, while the mean was approximately ₦3.95 million. The substantial difference between these values and the unusually high maximum indicate a highly skewed income distribution, suggesting the presence of extreme income observations requiring further investigation.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Annual%20Income%20Distribution%20and%20Boxplot.png)
+
+**Membership Tier Distribution**
+
+Customer membership tiers were examined to understand how customers were distributed across the available membership categories.
+
+Python Implementation:
+```python
+customer_demographics['membership_tier'].value_counts()
+```
+
+Results:
+| Membership Tier | Customer Count |
+|---|---:|
+| Standard | 5,285 |
+| Silver | 2,534 |
+| Gold | 1,600 |
+| Platinum | 556 |
+| gold | 25 |
+
+Interpretation: The Standard membership tier accounted for the largest proportion of customers, followed by Silver and Gold. Platinum had the lowest count. The separate gold category also revealed an inconsistency in categorical formatting that should be standardised before further categorical analysis.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Distribution%20by%20Membership%20Tier.png)
+
+**Regional Distribution**
+
+The geographical distribution of customers was examined using the region variable.
+
+Python Implementation:
+```python
+customer_demographics['region'].value_counts()
+```
+
+Results:
+| Region | Customer Count |
+|---|---:|
+| South | 2,791 |
+| West | 2,386 |
+| North | 1,778 |
+| East | 1,551 |
+| Central | 1,494 |
+
+Interpretation: The South had the highest customer representation, followed by the West and North. The Central region recorded the lowest customer count. This provides an overview of the geographical distribution of the customer base.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Distribution%20by%20Region.png)
+
+**Summary of Exploratory Data Analysis**
+
+The exploratory analysis revealed several important patterns in customer demographics and purchasing behaviour:
+
+1.	Purchasing Behaviour: Customers made an average of 6.28 completed purchases, with purchase frequency ranging from 1 to 25 transactions.
+2.	Spending Behaviour: Average total customer spending was approximately ₦471,104.70, with considerable variation across customers.
+3.	Average Order Value: The average order value was approximately ₦81,538.92.
+4.	Purchase Recency: Customers had an average recency of approximately 161 days, indicating differences in how recently they made purchases.
+5.	Product Preferences: Fashion was the most frequently purchased category, followed by Groceries and Electronics.
+6.	Sales Channels: The Mobile App accounted for the highest transaction share at approximately 33.98%.
+7.	Marketing Engagement: Only 16.93% of completed transactions were associated with a recorded campaign response.
+8.	Customer Demographics: The average customer age was 36 years, while median annual income was approximately ₦2.38 million. The South had the highest customer representation.
+
+**Overall Conclusion**
+
+The analysis established that customers exhibit different purchasing frequencies, spending levels, product preferences, and engagement patterns. These differences provide useful behavioural indicators for developing customer-level features and identifying meaningful customer segments through machine learning.
+
+The findings also highlighted data quality considerations, particularly the extreme annual income values and inconsistent membership tier labels, which require attention during subsequent feature preparation.
+
+## CUSTOMER-LEVEL FEATURE ENGINEERING
+
+This session documents the creation of customer-level variables from the cleaned transaction and customer datasets. The purpose was to transform individual transaction records into measurable customer characteristics that could be used for segmentation.
+
+The features cover return behaviour, customer tenure, product and channel diversity, discount usage, marketing engagement, profitability, purchase frequency, spending consistency, recency, demographics, and historical customer value.
+
+Important methodological distinction: completed_df was used for features based on successful purchases, while the original cleaned df was used for return-related features so that returned transactions were not excluded.
+
+**Feature Engineering Overview
+Feature engineering involved grouping records by customer_id, calculating customer-level metrics, and transforming selected numerical variables into behavioural or demographic categories.
+The resulting feature tables were created separately and would subsequently be combined into a single customer-level dataset for modelling.
+
+**Customer Return Behaviour**
+
+Business question: What proportion of each customer's transactions are returned?
+
+Return rate measures the proportion of a customer's total transactions that were returned. The original cleaned df was used because completed_df excludes returned transactions.
+
+Python code:
+```python
+customer_returns = (
+    df.groupby('customer_id')
+    .agg(
+        total_transactions=('transaction_id', 'nunique'),
+        returned_transactions=(
+            'order_status',
+            lambda x: (x == 'Returned').sum()
+        )
+    )
+    .reset_index()
+)
+
+customer_returns['return_rate'] = (
+    customer_returns['returned_transactions']
+    / customer_returns['total_transactions']
+)
+
+customer_returns['return_rate'].describe()
+```
+
+Results:
+| Statistic | Return Rate |
+|---|---:|
+| Count | 10,000 |
+| Mean | 0.0512 |
+| Standard deviation | 0.1264 |
+| Minimum | 0.0000 |
+| 25th percentile | 0.0000 |
+| Median | 0.0000 |
+| 75th percentile | 0.0667 |
+| Maximum | 1.0000 |
+
+Interpretation: The average customer return rate was approximately 5.12%. At least half of the customers had a return rate of zero, while the maximum was 100%. This indicates that return behaviour varied across customers and could help distinguish customers with higher return tendencies.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Customer%20Return%20Rates.png)
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Top%2010%20Customers%20by%20Return%20Rate.png)
+
+Python code for visualisations:
+```python
+# Return rate distribution
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_returns,
+    x='return_rate',
+    bins=30,
+    kde=True
+)
+
+plt.title('Distribution of Customer Return Rates')
+plt.xlabel('Return Rate')
+plt.ylabel('Number of Customers')
+plt.show()
+
+
+# Customers with the highest return rates
+top_return_customers = (
+    customer_returns
+    .sort_values('return_rate', ascending=False)
+    .head(10)
+)
+
+plt.figure(figsize=(10, 5))
+
+sns.barplot(
+    data=top_return_customers,
+    x='customer_id',
+    y='return_rate'
+)
+
+plt.title('Top 10 Customers by Return Rate')
+plt.xlabel('Customer ID')
+plt.ylabel('Return Rate')
+plt.xticks(rotation=45)
+plt.show()
+```
+
+**Customer Tenure**
+
+Customer tenure measures how long a customer has maintained a relationship with the business, based on their signup date.
+
+The latest transaction date in the completed transaction dataset was used as the reference date.
+
+Python code:
+```python
+# Reference date
+snapshot_date = completed_df['transaction_date'].max()
+
+# Get one signup date per customer
+customer_tenure = (
+    df.groupby('customer_id')['signup_date']
+    .min()
+    .reset_index(name='signup_date')
+)
+
+# Calculate customer tenure
+customer_tenure['tenure_days'] = (
+    snapshot_date - customer_tenure['signup_date']
+).dt.days
+
+customer_tenure['tenure_days'].describe()
+```
+
+Results:
+| Statistic | Tenure (days) |
+|---|---:|
+| Count | 10,000 |
+| Mean | 711.23 |
+| Standard deviation | 395.52 |
+| Minimum | 29 |
+| 25th percentile | 370 |
+| Median | 714 |
+| 75th percentile | 1,053 |
+| Maximum | 1,398 |
+
+Interpretation: Customers had an average tenure of approximately 711 days, or about 1.95 years. The wide range indicates differences in how long customers had maintained their relationship with the business.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Customer%20Tenure.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_tenure,
+    x='tenure_days',
+    bins=30,
+    kde=True
+)
+
+plt.title('Distribution of Customer Tenure')
+plt.xlabel('Customer Tenure (Days)')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Purchase Diversity**
+
+This feature measures the number of unique product categories purchased by each customer. Only completed transactions were considered.
+
+Python code:
+```python
+customer_diversity = (
+    completed_df.groupby('customer_id')['product_category']
+    .nunique()
+    .reset_index(name='category_diversity')
+)
+
+customer_diversity['category_diversity'].describe()
+
+customer_diversity['category_diversity'].value_counts().sort_index()
+```
+
+Results:
+| Statistic | Category Diversity |
+|---|---:|
+| Count | 9,912 |
+| Mean | 3.42 |
+| Standard deviation | 1.72 |
+| Minimum | 1 |
+| 25th percentile | 2 |
+| Median | 4 |
+| 75th percentile | 5 |
+| Maximum | 7 |
+
+| Unique Categories Purchased | Customers |
+|---|---:|
+| 1 | 2,005 |
+| 2 | 1,419 |
+| 3 | 1,502 |
+| 4 | 1,689 |
+| 5 | 2,010 |
+| 6 | 1,220 |
+| 7 | 67 |
+
+Interpretation: Customers purchased from an average of approximately 3.42 product categories. Some customers concentrated their purchases in one category, while others purchased across several categories. This feature can help distinguish specialised buyers from customers with broader product interests.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Customer%20Purchase%20Diversity.png)
+
+```python
+plt.figure(figsize=(9, 5))
+
+sns.countplot(
+    data=customer_diversity,
+    x='category_diversity'
+)
+
+plt.title('Distribution of Customer Purchase Diversity')
+plt.xlabel('Number of Unique Product Categories Purchased')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Discount Behaviour**
+
+This feature measures the average discount received by each customer across completed transactions. It helps identify customers who tend to purchase at full price and those who purchase with relatively higher discounts.
+
+Python code:
+```python
+customer_discount = (
+    completed_df.groupby('customer_id')['discount_pct']
+    .mean()
+    .reset_index(name='average_discount_pct')
+)
+
+customer_discount['average_discount_pct'].describe()
+```
+
+Results:
+| Statistic | Average Discount |
+|---|---:|
+| Count | 9,912 |
+| Mean | 0.1578 |
+| Standard deviation | 0.0657 |
+| Minimum | 0.0004 |
+| 25th percentile | 0.1204 |
+| Median | 0.1526 |
+| 75th percentile | 0.1880 |
+| Maximum | 0.5500 |
+
+Interpretation: The average customer discount was approximately 15.78%, with a median of 15.26%. The variation suggests that customers differed in their exposure to or use of discounts.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Average%20Customer%20Discount.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_discount,
+    x='average_discount_pct',
+    bins=30,
+    kde=True
+)
+
+plt.title('Distribution of Average Customer Discount')
+plt.xlabel('Average Discount Percentage')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Marketing Engagement**
+
+This feature measures how actively customers respond to marketing campaigns.
+
+The response rate was calculated as:
+```
+Campaign Response Rate} = Successful Responses/Total Exposed Campaigns
+```
+An important distinction was maintained: Not Exposed was not treated as Ignored. Customers who were not exposed to a campaign could not be classified as unresponsive to it.
+
+Initial campaign response distribution:
+```python
+completed_df['campaign_response'].value_counts(dropna=False)
+```
+
+| Campaign Response | Transactions |
+|---|---:|
+| Not Exposed | 29,920 |
+| Ignored | 21,811 |
+| Responded | 10,540 |
+
+Python code for customer response rate:
+```python
+customer_marketing = (
+    completed_df.groupby('customer_id')
+    .agg(
+        total_campaigns=(
+            'campaign_response',
+            lambda x: x.isin(['Responded', 'Ignored']).sum()
+        ),
+        successful_responses=(
+            'campaign_response',
+            lambda x: (x == 'Responded').sum()
+        )
+    )
+    .reset_index()
+)
+
+customer_marketing['campaign_response_rate'] = (
+    customer_marketing['successful_responses']
+    / customer_marketing['total_campaigns'].replace(0, np.nan)
+)
+
+customer_marketing['campaign_response_rate'].describe()
+```
+
+Results:
+| Statistic | Campaign Response Rate |
+|---|---:|
+| Count | 8,686 |
+| Mean | 0.3229 |
+| Standard deviation | 0.3141 |
+| Minimum | 0.0000 |
+| 25th percentile | 0.0000 |
+| Median | 0.2857 |
+| 75th percentile | 0.5000 |
+| Maximum | 1.0000 |
+
+Customers without campaign exposure:
+```python
+print(
+    'Customers without campaign exposure:',
+    customer_marketing['total_campaigns'].eq(0).sum()
+)
+```
+
+Output:
+
+Customers without campaign exposure: 1226
+
+Interpretation: Among customers with campaign exposure, the average response rate was approximately 32.29%. A total of 1,226 customers had no exposed campaign records and therefore had undefined response rates. These customers should not be interpreted as having a zero response rate.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Customer%20Campaign%20Response%20Rates.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_marketing,
+    x='campaign_response_rate',
+    bins=30,
+    kde=True
+)
+
+plt.title('Distribution of Customer Campaign Response Rates')
+plt.xlabel('Campaign Response Rate')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Profitability**
+
+This feature measures the total profit generated by each customer from completed transactions
+
+Customer profit was calculated as: 
+```
+Customer Profit} = Total Net Revenue - Total Cost
+```
+
+Python code:
+```python
+customer_profit = (
+    completed_df.groupby('customer_id')
+    .agg(
+        total_revenue=('net_amount_ngn', 'sum'),
+        total_cost=('cost_amount_ngn', 'sum')
+    )
+    .reset_index()
+)
+
+customer_profit['total_profit_ngn'] = (
+    customer_profit['total_revenue'] -
+    customer_profit['total_cost']
+)
+
+customer_profit['total_profit_ngn'].describe()
+```
+
+Results:
+| Statistic | Total Profit (₦) |
+|---|---:|
+| Count | 9,912 |
+| Mean | 120,102.90 |
+| Standard deviation | 124,662.90 |
+| Minimum | -273,461.70 |
+| 25th percentile | 32,965.35 |
+| Median | 86,267.17 |
+| 75th percentile | 161,601.40 |
+| Maximum | 1,140,839.00 |
+
+Interpretation: The average customer generated approximately ₦120,102.90 in profit. However, the minimum value was negative, indicating that some customers' total costs exceeded their net revenue. Profitability therefore provides another useful dimension for distinguishing customer segments.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Customer%20Profitability.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_profit,
+    x='total_profit_ngn',
+    bins=40,
+    kde=True
+)
+
+plt.title('Distribution of Customer Profitability')
+plt.xlabel('Total Customer Profit (NGN)')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Purchase Channel Diversity**
+
+This feature measures the number of distinct sales channels each customer uses to make purchases.
+
+Python code:
+```python
+customer_channel = (
+    completed_df.groupby('customer_id')['sales_channel']
+    .nunique()
+    .reset_index(name='channel_diversity')
+)
+
+customer_channel['channel_diversity'].describe()
+
+customer_channel['channel_diversity'].value_counts().sort_index()
+```
+
+Results:
+| Statistic | Channel Diversity |
+|---|---:|
+| Count | 9,912 |
+| Mean | 2.69 |
+| Standard deviation | 1.14 |
+| Minimum | 1 |
+| 25th percentile | 2 |
+| Median | 3 |
+| 75th percentile | 4 |
+| Maximum | 4 |
+
+| Number of Unique Channels | Customers |
+|---|---:|
+| 1 | 2,168 |
+| 2 | 1,895 |
+| 3 | 2,681 |
+| 4 | 3,168 |
+
+Interpretation: Customers used an average of approximately 2.69 different sales channels. A substantial number of customers used all four available channels, suggesting that many customers interacted with the business through multiple purchasing platforms.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Customer%20Channel%20Diversity.png)
+
+```python
+plt.figure(figsize=(9, 5))
+
+sns.countplot(
+    data=customer_channel,
+    x='channel_diversity'
+)
+
+plt.title('Distribution of Customer Channel Diversity')
+plt.xlabel('Number of Unique Sales Channels Used')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Monthly Customer Purchase Frequency**
+
+This feature measures the average number of completed purchases a customer makes per active month.
+
+Unlike total purchase frequency, it accounts for the period between a customer's first and last observed purchases. This helps distinguish customers who make purchases frequently within a shorter period from those whose purchases are spread over a longer period.
+
+Python code:
+```python
+customer_monthly_frequency = (
+    completed_df.groupby('customer_id')
+    .agg(
+        total_purchases=('transaction_id', 'nunique'),
+        first_purchase=('transaction_date', 'min'),
+        last_purchase=('transaction_date', 'max')
+    )
+    .reset_index()
+)
+
+customer_monthly_frequency['active_months'] = (
+    (customer_monthly_frequency['last_purchase'].dt.year -
+     customer_monthly_frequency['first_purchase'].dt.year) * 12
+    +
+    (customer_monthly_frequency['last_purchase'].dt.month -
+     customer_monthly_frequency['first_purchase'].dt.month)
+    + 1
+)
+
+customer_monthly_frequency['monthly_purchase_frequency'] = (
+    customer_monthly_frequency['total_purchases'] /
+    customer_monthly_frequency['active_months']
+)
+
+customer_monthly_frequency[
+    'monthly_purchase_frequency'
+].describe()
+```
+
+Results:
+| Statistic | Monthly Purchase Frequency |
+|---|---:|
+| Count | 9,912 |
+| Mean | 0.7069 |
+| Standard deviation | 0.4593 |
+| Minimum | 0.0690 |
+| 25th percentile | 0.3571 |
+| Median | 0.5833 |
+| 75th percentile | 1.0000 |
+| Maximum | 5.0000 |
+
+Interpretation: Customers made an average of approximately 0.71 purchases per active month. The median was approximately 0.58 purchases per month, indicating differences in purchasing frequency across customers.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Monthly%20Customer%20Purchase%20Frequency.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_monthly_frequency,
+    x='monthly_purchase_frequency',
+    bins=30,
+    kde=True
+)
+
+plt.title('Distribution of Monthly Customer Purchase Frequency')
+plt.xlabel('Average Purchases per Month')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Spending Consistency**
+
+This feature measures how consistent each customer's spending is across completed transactions. The standard deviation of transaction-level net amounts was used.
+
+A lower standard deviation indicates relatively consistent transaction values, while a higher value indicates greater variation in spending.
+
+Customers with only one completed transaction have no measurable spending variation, so their standard deviation is missing.
+
+Python code:
+```python
+customer_spending_consistency = (
+    completed_df.groupby('customer_id')['net_amount_ngn']
+    .std()
+    .reset_index(name='spending_std_ngn')
+)
+
+customer_spending_consistency['spending_std_ngn'].describe()
+```
+
+Results:
+| Statistic | Spending Standard Deviation (₦) |
+|---|---:|
+| Count | 8,130 |
+| Mean | 78,397.32 |
+| Standard deviation | 87,600.57 |
+| Minimum | 94.88 |
+| 25th percentile | 28,630.68 |
+| Median | 50,584.19 |
+| 75th percentile | 92,926.50 |
+| Maximum | 1,173,783.00 |
+
+Interpretation: The standard deviation varied considerably across customers, indicating differences in transaction spending consistency. The count of 8,130 also shows that this feature was unavailable for customers without sufficient transaction observations to calculate a standard deviation.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Customer%20Spending%20Variability.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_spending_consistency,
+    x='spending_std_ngn',
+    bins=30,
+    kde=True
+)
+
+plt.title('Distribution of Customer Spending Variability')
+plt.xlabel('Standard Deviation of Spending (NGN)')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Average Profit per Transaction**
+
+This feature measures the average profit generated per completed transaction for each customer.
+
+It provides a transaction-level profitability measure rather than relying only on total customer profit.
+
+Python code:
+```python
+customer_avg_profit = (
+    completed_df.groupby('customer_id')
+    .agg(
+        total_profit_ngn=(
+            'net_amount_ngn',
+            lambda x: x.sum(min_count=1)
+        ),
+        total_cost_ngn=(
+            'cost_amount_ngn',
+            lambda x: x.sum(min_count=1)
+        ),
+        transaction_count=('transaction_id', 'nunique')
+    )
+    .reset_index()
+)
+
+customer_avg_profit['average_profit_per_transaction'] = (
+    (customer_avg_profit['total_profit_ngn'] -
+     customer_avg_profit['total_cost_ngn'])
+    / customer_avg_profit['transaction_count']
+)
+
+customer_avg_profit[
+    'average_profit_per_transaction'
+].describe()
+```
+
+Results:
+| Statistic | Average Profit per Transaction (₦) |
+|---|---:|
+| Count | 9,912 |
+| Mean | 20,753.65 |
+| Standard deviation | 22,434.90 |
+| Minimum | -70,335.46 |
+| 25th percentile | 9,315.84 |
+| Median | 13,823.18 |
+| 75th percentile | 25,680.09 |
+| Maximum | 706,389.79 |
+
+Interpretation: The average profit per completed transaction was approximately ₦20,753.65. Negative values indicate customers whose average transaction cost exceeded their net revenue. The difference between the mean and median also indicates variation in transaction-level profitability.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Average%20Profit%20per%20Transaction.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_avg_profit,
+    x='average_profit_per_transaction',
+    bins=30,
+    kde=True
+)
+
+plt.title('Distribution of Average Profit per Transaction')
+plt.xlabel('Average Profit per Transaction (NGN)')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Return Frequency**
+
+While return rate measures the proportion of transactions returned, return frequency measures the actual number of returned transactions for each customer.
+
+The original cleaned df was used because returned transactions are excluded from completed_df.
+
+Python code:
+```python
+customer_return_frequency = (
+    df.groupby('customer_id')
+    .agg(
+        total_returned_transactions=(
+            'order_status',
+            lambda x: (x == 'Returned').sum()
+        )
+    )
+    .reset_index()
+)
+
+customer_return_frequency[
+    'total_returned_transactions'
+].describe()
+
+customer_return_frequency[
+    'total_returned_transactions'
+].value_counts().sort_index()
+```
+
+Results:
+| Statistic | Returned Transactions |
+|---|---:|
+| Count | 10,000 |
+| Mean | 0.3368 |
+| Standard deviation | 0.6140 |
+| Minimum | 0 |
+| 25th percentile | 0 |
+| Median | 0 |
+| 75th percentile | 1 |
+| Maximum | 5 |
+
+| Returned Transactions | Customers |
+|---|---:|
+| 0 | 7,284 |
+| 1 | 2,164 |
+| 2 | 467 |
+| 3 | 71 |
+| 4 | 13 |
+| 5 | 1 |
+
+Interpretation: Customers had an average of approximately 0.34 returned transactions. Most customers (7,284) had no returned transactions, while only a small number recorded multiple returns.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Customer%20Return%20Frequency.png)\
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.countplot(
+    data=customer_return_frequency,
+    x='total_returned_transactions'
+)
+
+plt.title('Distribution of Customer Return Frequency')
+plt.xlabel('Number of Returned Transactions')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Profit Margin**
+
+This feature measures the percentage of a customer's net revenue retained as profit.
+
+It was calculated using the previously created customer profitability table.
+```
+Profit Margin} = Total Profit/Total Revenue
+```
+
+Python code:
+```python
+customer_profit['profit_margin'] = (
+    customer_profit['total_profit_ngn']
+    / customer_profit['total_revenue']
+)
+
+customer_profit['profit_margin'].describe()
+```
+
+Results:
+| Statistic | Profit Margin |
+|---|---:|
+| Count | 9,912 |
+| Mean | 0.2715 |
+| Standard deviation | 0.0934 |
+| Minimum | -1.6401 |
+| 25th percentile | 0.2123 |
+| Median | 0.2720 |
+| 75th percentile | 0.3249 |
+| Maximum | 0.7658 |
+
+Interpretation: The average customer profit margin was approximately 27.15%. The negative minimum indicates that some customers generated losses relative to their net revenue. This feature provides an additional measure of customer-level financial contribution.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Customer%20Profit%20Margins.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_profit,
+    x='profit_margin',
+    bins=30,
+    kde=True
+)
+
+plt.title('Distribution of Customer Profit Margins')
+plt.xlabel('Customer Profit Margin')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Purchase Recency Category**
+
+Customer recency measures the number of days since a customer's last completed purchase. This feature was transformed from a continuous numerical variable into five behavioural categories using binning.
+
+The categories were defined as follows:
+| Recency Range | Category |
+|---|---|
+| 0–30 days | Very Recent |
+| 31–90 days | Recent |
+| 91–180 days | Moderate |
+| 181–365 days | At Risk |
+| More than 365 days | Inactive |
+
+Python code:
+```python
+snapshot_date = completed_df['transaction_date'].max()
+
+customer_recency = (
+    completed_df.groupby('customer_id')['transaction_date']
+    .max()
+    .reset_index(name='last_purchase_date')
+)
+
+customer_recency['recency_days'] = (
+    snapshot_date - customer_recency['last_purchase_date']
+).dt.days
+
+customer_recency['recency_category'] = pd.cut(
+    customer_recency['recency_days'],
+    bins=[-1, 30, 90, 180, 365, float('inf')],
+    labels=[
+        'Very Recent',
+        'Recent',
+        'Moderate',
+        'At Risk',
+        'Inactive'
+    ]
+)
+
+customer_recency['recency_category'].value_counts().sort_index()
+```
+
+Results:
+| Recency Category | Customers |
+|---|---:|
+| Very Recent | 1,395 |
+| Recent | 3,324 |
+| Moderate | 2,294 |
+| At Risk | 1,766 |
+| Inactive | 1,133 |
+| Total | 9,912 |
+
+Interpretation: The largest group consisted of customers classified as Recent, with 3,324 customers. A further 1,766 customers were classified as At Risk, while 1,133 were Inactive. These categories provide a practical way to identify customers who may require retention or re-engagement campaigns.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Distribution%20by%20Purchase%20Recency.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.countplot(
+    data=customer_recency,
+    x='recency_category',
+    order=[
+        'Very Recent',
+        'Recent',
+        'Moderate',
+        'At Risk',
+        'Inactive'
+    ]
+)
+
+plt.title('Customer Distribution by Purchase Recency')
+plt.xlabel('Recency Category')
+plt.ylabel('Number of Customers')
+plt.xticks(rotation=30)
+plt.show()
+```
+
+**Customer Age Group**
+
+Customer age was transformed into demographic categories to make age-related customer patterns easier to interpret.
+
+Python code:
+```python
+customer_demographics['age_group'] = pd.cut(
+    customer_demographics['age'],
+    bins=[-float('inf'), 24, 34, 44, 54, float('inf')],
+    labels=[
+        'Young',
+        'Young Adult',
+        'Adult',
+        'Middle-aged',
+        'Senior'
+    ]
+)
+
+customer_demographics['age_group'].value_counts().sort_index()
+
+customer_demographics['age_group'].value_counts(
+    normalize=True
+).mul(100).round(2)
+```
+
+Results:
+| Age Group | Customers | Percentage |
+|---|---:|---:|
+| Young | 1,472 | 14.72% |
+| Young Adult | 2,830 | 28.30% |
+| Adult | 3,468 | 34.68% |
+| Middle-aged | 1,747 | 17.47% |
+| Senior | 483 | 4.83% |
+| Total | 10,000 | 100% |
+
+Interpretation: Adults aged 35–44 formed the largest demographic group, representing 34.68% of customers. Young Adults accounted for another 28.30%, while Seniors represented the smallest group at 4.83%. The age-group feature provides a categorical demographic variable for customer profiling.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Distribution%20by%20Age%20Group.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.countplot(
+    data=customer_demographics,
+    x='age_group',
+    order=[
+        'Young',
+        'Young Adult',
+        'Adult',
+        'Middle-aged',
+        'Senior'
+    ]
+)
+
+plt.title('Customer Distribution by Age Group')
+plt.xlabel('Age Group')
+plt.ylabel('Number of Customers')
+plt.xticks(rotation=30)
+plt.show()
+```
+
+**Customer Lifetime Value (CLV) Proxy**
+
+This feature estimates the total revenue generated by each customer over their observed purchasing history. Since it uses historical transaction revenue rather than a predictive lifetime value model, it is treated as a historical customer value or CLV proxy.
+
+Only completed transactions were included.
+
+Python code:
+```python
+customer_lifetime_value = (
+    completed_df.groupby('customer_id')['net_amount_ngn']
+    .sum(min_count=1)
+    .reset_index(name='historical_customer_value_ngn')
+)
+
+customer_lifetime_value[
+    'historical_customer_value_ngn'
+].describe()
+```
+
+Results:
