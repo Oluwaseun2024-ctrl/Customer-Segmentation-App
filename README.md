@@ -1832,3 +1832,566 @@ customer_lifetime_value[
 ```
 
 Results:
+| Statistic | Historical Customer Value (₦) |
+|---|---:|
+| Count | 9,912 |
+| Mean | 471,104.70 |
+| Standard deviation | 500,038.30 |
+| Minimum | 1,945.04 |
+| 25th percentile | 119,622.30 |
+| Median | 329,314.10 |
+| 75th percentile | 630,604.30 |
+| Maximum | 4,824,470.00 |
+
+Interpretation: Customers generated an average historical net revenue of approximately ₦471,104.70. The substantial difference between the mean and median indicates variation in customer value, with some customers contributing considerably more revenue than others.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Historical%20Customer%20Value.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.histplot(
+    data=customer_lifetime_value,
+    x='historical_customer_value_ngn',
+    bins=40,
+    kde=True
+)
+
+plt.title('Distribution of Historical Customer Value')
+plt.xlabel('Historical Customer Value (NGN)')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Customer Acquisition Year**
+
+Customer acquisition year was extracted from each customer's signup date. This feature identifies when customers joined the business and can help reveal differences in customer acquisition across years.
+
+The customer_demographics dataset was used because it contains one record per customer.
+
+Python code:
+```python
+# Extract acquisition year
+customer_demographics['acquisition_year'] = (
+    customer_demographics['signup_date'].dt.year
+)
+
+customer_demographics['acquisition_year'].value_counts().sort_index()
+```
+
+Results:
+| Acquisition Year | Customers |
+|---|---:|
+| 2022 | 2,208 |
+| 2023 | 2,687 |
+| 2024 | 2,653 |
+| 2025 | 2,452 |
+| Total | 10,000 |
+
+Interpretation: The highest number of customers joined in 2023, with 2,687 signups, followed closely by 2024 with 2,653. The acquisition-year feature provides a temporal dimension for examining customer groups based on when they joined the business.
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Acquisition%20by%20Year.png)
+
+```python
+plt.figure(figsize=(10, 5))
+
+sns.countplot(
+    data=customer_demographics,
+    x='acquisition_year',
+    order=sorted(
+        customer_demographics['acquisition_year'].dropna().unique()
+    )
+)
+
+plt.title('Customer Acquisition by Year')
+plt.xlabel('Acquisition Year')
+plt.ylabel('Number of Customers')
+plt.show()
+```
+
+**Feature Engineering Summary**
+
+The feature engineering process produced a collection of customer-level variables covering purchasing behaviour, financial contribution, demographics, marketing engagement, and customer relationships.
+
+| Feature Group | Engineered Features |
+|---|---|
+| Purchasing behaviour | Purchase frequency, monthly purchase frequency, recency, recency category |
+| Spending behaviour | Total spending, average order value, spending consistency |
+| Product and channel preferences | Category diversity, channel diversity |
+| Returns | Return rate, return frequency |
+| Marketing | Campaign response rate |
+| Financial performance | Total profit, average profit per transaction, profit margin |
+| Customer relationship | Tenure, acquisition year |
+| Customer demographics | Age group |
+| Customer value | Historical customer value (CLV proxy) |
+| Other behavioural variables | Average discount received |
+
+Important observations before modelling
+- Most customer-level features based on completed transactions contain 9,912 customers rather than 10,000. This is because 88 customers had no completed transactions.
+- Campaign response rate was available for 8,686 customers. The remaining 1,226 customers had no exposed campaign records, so their response rates were undefined.
+- Spending consistency was available for 8,130 customers because customers with only one completed transaction could not have a transaction-level spending standard deviation calculated.
+- Return rate and return frequency were calculated using the original cleaned dataset to include returned transactions.
+- Historical customer value is based on observed net revenue. It is a CLV proxy, not a prediction of future customer lifetime value.
+
+## CONSTRUCTION OF THE FINAL CUSTOMER-LEVEL DATASET
+
+This stage consolidated the engineered feature tables into a single customer-level dataset.
+
+The original dataset contained multiple transaction records per customer. However, customer segmentation requires one consolidated record per customer, with each row representing an individual customer and each column representing a demographic, behavioural, or financial feature.
+
+The objective was therefore to combine the previously engineered feature tables while preserving one record per customer.
+
+**Inspection of Existing Feature Tables**
+
+Before merging, the dimensions of all available feature tables were inspected to understand their structures and identify which tables contained all 10,000 customers and which contained only customers with completed transactions.
+
+Python code:
+```python
+feature_tables = {
+    'customer_demographics': customer_demographics,
+    'purchase_frequency': purchase_frequency,
+    'customer_spending': customer_spending,
+    'customer_aov': customer_aov,
+    'customer_recency': customer_recency,
+    'customer_returns': customer_returns,
+    'customer_tenure': customer_tenure,
+    'customer_diversity': customer_diversity,
+    'customer_discount': customer_discount,
+    'customer_marketing': customer_marketing,
+    'customer_profit': customer_profit,
+    'customer_channel': customer_channel,
+    'customer_monthly_frequency': customer_monthly_frequency,
+    'customer_spending_consistency': customer_spending_consistency,
+    'customer_avg_profit': customer_avg_profit,
+    'customer_return_frequency': customer_return_frequency,
+    'customer_lifetime_value': customer_lifetime_value
+}
+
+for name, table in feature_tables.items():
+    print(f'{name}: {table.shape}')
+```
+
+Results:
+| Feature Table | Shape |
+|---|---|
+| customer_demographics | (10,000, 31) |
+| purchase_frequency | (9,912, 2) |
+| customer_spending | (9,912, 2) |
+| customer_aov | (9,912, 2) |
+| customer_recency | (9,912, 4) |
+| customer_returns | (10,000, 4) |
+| customer_tenure | (10,000, 3) |
+| customer_diversity | (9,912, 2) |
+| customer_discount | (9,912, 2) |
+| customer_marketing | (9,912, 4) |
+| customer_profit | (9,912, 5) |
+| customer_channel | (9,912, 2) |
+| customer_monthly_frequency | (9,912, 6) |
+| customer_spending_consistency | (9,912, 2) |
+| customer_avg_profit | (9,912, 5) |
+| customer_return_frequency | (10,000, 2) |
+| customer_lifetime_value | (9,912, 2) |
+
+Interpretation: The demographic, tenure, return-rate, and return-frequency tables contained 10,000 customers. Most purchase-related feature tables contained 9,912 customers because 88 customers had no completed transactions.
+
+This difference was important when deciding how to construct the final dataset.
+
+**Merging the Feature Tables**
+
+The demographic dataset was selected as the starting point because it contained one record for every customer.
+
+The remaining feature tables were merged using customer_id as the common identifier. A left join was applied to retain all customers from the demographic dataset.
+
+The validate='one_to_one' argument was included to ensure that each merge maintained a one-to-one relationship between customer records.
+
+Python code:
+```python
+# Start with the demographic dataset
+customer_features = customer_demographics.copy()
+
+# Select only the useful columns from overlapping feature tables
+feature_tables_to_merge = [
+    purchase_frequency,
+    customer_spending,
+    customer_aov,
+    customer_recency,
+    customer_returns,
+    customer_tenure[['customer_id', 'tenure_days']],
+    customer_diversity,
+    customer_discount,
+    customer_marketing,
+    customer_profit,
+    customer_channel,
+    customer_monthly_frequency[
+        ['customer_id', 'monthly_purchase_frequency']
+    ],
+    customer_spending_consistency,
+    customer_avg_profit[
+        ['customer_id', 'average_profit_per_transaction']
+    ]
+]
+
+# Merge all selected features into one customer-level dataset
+for table in feature_tables_to_merge:
+    customer_features = customer_features.merge(
+        table,
+        on='customer_id',
+        how='left',
+        validate='one_to_one'
+    )
+
+print("Final dataset shape:", customer_features.shape)
+print("Unique customers:", customer_features['customer_id'].nunique())
+print("Duplicate customer IDs:", customer_features['customer_id'].duplicated().sum())
+```
+
+Results:
+
+Final dataset shape: (10000, 54)
+
+Unique customers: 10000
+
+Duplicate customer IDs: 0
+
+Interpretation: The merged dataset contained 10,000 customer records and 54 columns. Each customer appeared exactly once, confirming that the merging process preserved the required customer-level structure.
+
+**Missing Value Assessment**
+
+After merging, missing values were examined to identify features that were incomplete and determine whether the missing values represented genuine absence of customer activity or data quality problems.
+
+Python code:
+```python
+# Calculate missing values
+missing_summary = pd.DataFrame({
+    'missing_count': customer_features.isnull().sum(),
+    'missing_percentage': (
+        customer_features.isnull().mean() * 100
+    )
+})
+
+# Keep only columns with missing values
+missing_summary = (
+    missing_summary[missing_summary['missing_count'] > 0]
+    .sort_values('missing_percentage', ascending=False)
+)
+
+missing_summary
+```
+
+Results:
+| Feature | Missing Count | Missing Percentage |
+|---|---:|---:|
+| spending_std_ngn | 1,870 | 18.70% |
+| campaign_response_rate | 1,314 | 13.14% |
+| purchase_frequency | 88 | 0.88% |
+| average_order_value_ngn | 88 | 0.88% |
+| total_spending_ngn | 88 | 0.88% |
+| recency_category | 88 | 0.88% |
+| last_purchase_date | 88 | 0.88% |
+| category_diversity | 88 | 0.88% |
+| average_discount_pct | 88 | 0.88% |
+| total_campaigns | 88 | 0.88% |
+| recency_days | 88 | 0.88% |
+| successful_responses | 88 | 0.88% |
+| total_revenue | 88 | 0.88% |
+| total_profit_ngn | 88 | 0.88% |
+| total_cost | 88 | 0.88% |
+| profit_margin | 88 | 0.88% |
+| channel_diversity | 88 | 0.88% |
+| monthly_purchase_frequency | 88 | 0.88% |
+| average_profit_per_transaction | 88 | 0.88% |
+
+Interpretation: Three important missing-value patterns emerged:
+
+1.	Customers without completed purchases: 88 customers had missing values across several purchase-related features because they had no completed transactions.
+2.	Spending consistency: 1,870 customers had missing spending standard deviations. This included customers with only one completed transaction, for whom spending variability could not be calculated.
+3.	Campaign response rate: 1,314 customers had undefined campaign response rates. This included customers without completed purchases and customers who had no campaign exposure.
+4.	These missing values required different treatments because they did not all have the same underlying cause.
+5.	5.19.4 Investigating the Missing Values
+6.	
+Additional checks were performed to understand the missing-value patterns.
+
+Python code:
+```python
+# Check customers without completed purchases
+print(
+    "Customers without purchase frequency:",
+    customer_features['purchase_frequency'].isna().sum()
+)
+
+# Check customers with only one completed purchase
+print(
+    "Customers with one purchase:",
+    (customer_features['purchase_frequency'] == 1).sum()
+)
+
+# Check missing spending consistency
+print(
+    "Missing spending standard deviation:",
+    customer_features['spending_std_ngn'].isna().sum()
+)
+
+# Check customers without campaign exposure
+print(
+    "Customers without campaign exposure:",
+    customer_features['total_campaigns'].isna().sum()
+)
+
+print(
+    "Customers with zero campaign exposure:",
+    (customer_features['total_campaigns'] == 0).sum()
+)
+```
+
+Results:
+
+Customers without purchase frequency: 88
+
+Customers with one purchase: 1782
+
+Missing spending standard deviation: 1870
+
+Customers without campaign exposure: 88
+
+Customers with zero campaign exposure: 1226
+
+Interpretation:
+- 88 customers had no completed purchases.
+- 1,782 customers had exactly one completed purchase.
+- 1,870 customers had missing spending standard deviation, corresponding to customers for whom transaction-level spending variability could not be calculated.
+- 1,226 customers had zero campaign exposure.
+- The 88 customers without completed purchases also had missing campaign information in the merged dataset.
+  
+The distinction between missing campaign information and zero campaign exposure was important. A customer with no campaign exposure should not automatically be classified as having a zero campaign response rate.
+
+**Creating the Clustering Dataset**
+
+Two datasets were retained to serve different purposes:
+- customer_features: the complete dataset containing all 10,000 customers, retained for business analysis.
+- clustering_df: a filtered dataset containing customers with at least one completed purchase, selected for the initial behavioural segmentation.
+- 
+This decision ensured that customers without completed purchases did not introduce missing values across several purchase-related variables during the initial clustering process.
+
+Python code:
+```python
+# Keep customers with at least one completed purchase
+clustering_df = customer_features[
+    customer_features['purchase_frequency'].notna()
+].copy()
+
+print("Clustering dataset shape:", clustering_df.shape)
+print("Unique customers:", clustering_df['customer_id'].nunique())
+
+print(
+    "Missing purchase frequency:",
+    clustering_df['purchase_frequency'].isna().sum()
+)
+```
+
+Results:
+
+Clustering dataset shape: (9912, 54)
+
+Unique customers: 9912
+
+Missing purchase frequency: 0
+
+Interpretation: The clustering dataset contained 9,912 customers and 54 columns. All selected customers had at least one completed purchase, and purchase frequency contained no missing values.
+
+The original 10,000-customer dataset was retained separately so that the 88 customers excluded from the initial clustering population were not lost from the overall business analysis.
+
+**Investigating Campaign Exposure**
+
+Before finalising the campaign features, the distribution of campaign exposure was examined.
+
+This was necessary because customers with no campaign exposure should be distinguished from customers who were exposed but did not respond.
+
+Python code:
+```python
+print(
+    clustering_df['total_campaigns']
+    .value_counts(dropna=False)
+    .sort_index()
+)
+```
+
+Results:
+| Exposed Campaign Records | Customers |
+|---:|---:|
+| 0 | 1,226 |
+| 1 | 2,122 |
+| 2 | 1,445 |
+| 3 | 1,188 |
+| 4 | 1,016 |
+| 5 | 880 |
+| 6 | 691 |
+| 7 | 523 |
+| 8 | 370 |
+| 9 | 215 |
+| 10 | 116 |
+| 11 | 48 |
+| 12 | 37 |
+| 13 | 22 |
+| 14 | 6 |
+| 15 | 5 |
+| 16 | 2 |
+| **Total** | **9,912** |
+
+Interpretation: A total of 1,226 customers had no exposed campaign records, while the remaining 8,686 customers had at least one exposed campaign record.
+
+This confirmed the need to retain campaign exposure as a separate feature rather than relying exclusively on campaign response rate.
+
+**Creating the Campaign Exposure Feature**
+
+A binary feature named campaign_exposed was created to identify whether each customer had experienced at least one marketing campaign.
+
+The feature was encoded as:
+- 1: Customer had at least one exposed campaign record.
+- 0: Customer had no exposed campaign records.
+
+Python code:
+```python
+# Identify customers who have experienced at least one campaign
+clustering_df['campaign_exposed'] = (
+    clustering_df['total_campaigns'] > 0
+).astype(int)
+```
+
+Interpretation: This feature allows the segmentation model to distinguish customers who were exposed to marketing campaigns from those who were not. It also preserves the distinction between lack of exposure and lack of response.
+
+**Customer-Level Dataset Construction Summary**
+
+The dataset construction stage successfully consolidated the engineered feature tables into a single customer-level structure.
+| Description | Result |
+|---|---:|
+| Original customer records | 10,000 |
+| Final customer-level records | 10,000 |
+| Final columns before campaign exposure feature | 54 |
+| Duplicate customer IDs | 0 |
+| Customers with completed purchases | 9,912 |
+| Customers without completed purchases | 88 |
+| Customers with campaign exposure | 8,686 |
+| Customers without campaign exposure | 1,226 |
+
+Two datasets were retained:
+| Dataset | Records | Purpose |
+|---|---:|---|
+| customer_features | 10,000 | Complete customer-level business analysis |
+| clustering_df | 9,912 | Initial behavioural segmentation |
+
+**Conclusion**
+
+The feature tables were successfully consolidated into a single customer-level dataset, ensuring that each customer was represented by one row. Missing values were investigated according to their underlying causes, and a separate clustering dataset was created containing customers with at least one completed purchase.
+
+The campaign exposure feature was also introduced to preserve important marketing information.
+
+## FEATURE SELECTION AND PREPROCESSING
+
+**Feature Selection Overview**
+
+The customer-level dataset contained 54 columns, but not all were suitable for K-Means clustering. Some columns were identifiers, transaction-level details, descriptive categories, or features containing overlapping information.
+
+The objective of feature selection was to identify numerical variables that meaningfully represent customer behaviour while reducing redundancy. This is important because K-Means uses distance calculations, and highly correlated features can give certain behavioural patterns disproportionate influence.
+
+**Reviewing the Available Features**
+
+The columns in clustering_df were inspected to distinguish potential clustering variables from profiling and descriptive columns.
+
+Python code:
+```python
+for col in clustering_df.columns:
+    print(col)
+```
+
+The inspection identified 54 columns, including customer demographics, transaction details, purchasing behaviour, marketing engagement, profitability, and engineered customer-level features.
+
+Examples of columns not selected as direct clustering inputs included:
+- customer_id and transaction_id: identifiers.
+- transaction_date, signup_date, and last_purchase_date: date fields.
+- product_category, payment_method, sales_channel, and region: categorical or descriptive variables.
+- gross_amount_ngn, net_amount_ngn, and cost_amount_ngn: transaction-level financial variables.
+- price_upper_bound, price_lower_bound, and outlier flags: data-cleaning information.
+
+The selection process therefore focused on customer-level numerical features.
+
+**Creating the Initial Candidate Feature Dataset**
+
+Twenty numerical features were initially selected for further evaluation.
+
+Python code:
+```python
+candidate_features = [
+    'age',
+    'annual_income_ngn',
+    'purchase_frequency',
+    'total_spending_ngn',
+    'average_order_value_ngn',
+    'recency_days',
+    'total_transactions',
+    'returned_transactions',
+    'return_rate',
+    'tenure_days',
+    'category_diversity',
+    'average_discount_pct',
+    'total_campaigns',
+    'successful_responses',
+    'campaign_response_rate',
+    'total_profit_ngn',
+    'profit_margin',
+    'channel_diversity',
+    'monthly_purchase_frequency',
+    'average_profit_per_transaction'
+]
+
+X = clustering_df[candidate_features].copy()
+
+print("Candidate feature dataset:", X.shape)
+print("Number of candidate features:", len(candidate_features))
+print("Missing values:", X.isnull().sum().sum())
+```
+
+Results:
+| Metric | Result |
+|---|---:|
+| Customers | 9,912 |
+| Candidate features | 20 |
+| Dataset shape | (9,912, 20) |
+| Missing values | 1,226 |
+
+The 1,226 missing values were associated with campaign_response_rate, representing customers without recorded campaign exposure.
+
+**Correlation and Redundancy Analysis**
+
+Pearson correlation was used to examine the relationships between candidate features. This helped identify variables that might represent similar customer behaviours.
+
+Python code:
+```python
+correlation_matrix = X.corr(method='pearson')
+
+correlation_matrix
+```
+
+The correlation matrix was visualised using a heatmap.
+
+```python
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+plt.figure(figsize=(18, 14))
+
+sns.heatmap(
+    correlation_matrix,
+    annot=True,
+    fmt='.2f',
+    cmap='coolwarm',
+    center=0,
+    linewidths=0.5
+)
+
+plt.title('Correlation Matrix of Candidate Clustering Features')
+plt.xticks(rotation=90)
+plt.yticks(rotation=0)
+plt.tight_layout()
+plt.show()
+```
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Correlation%20Heatmap%20of%20Candidate%20Clustering%20Features.png)
