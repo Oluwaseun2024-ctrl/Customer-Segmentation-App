@@ -2395,3 +2395,810 @@ plt.tight_layout()
 plt.show()
 ```
 ![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Correlation%20Heatmap%20of%20Candidate%20Clustering%20Features.png)
+
+To identify strongly correlated pairs systematically, correlations with an absolute value of at least 0.80 were extracted.
+
+Python code:
+```python
+upper_triangle = correlation_matrix.where(
+    np.triu(np.ones(correlation_matrix.shape), k=1).astype(bool)
+)
+
+high_correlations = (
+    upper_triangle.stack()
+    .reset_index()
+)
+
+high_correlations.columns = [
+    'feature_1',
+    'feature_2',
+    'correlation'
+]
+
+high_correlations = (
+    high_correlations[
+        high_correlations['correlation'].abs() >= 0.80
+    ]
+    .sort_values(
+        'correlation',
+        key=abs,
+        ascending=False
+    )
+)
+
+high_correlations
+```
+
+Highly correlated feature pairs identified:
+| Feature 1 | Feature 2 | Correlation |
+|---|---|---:|
+| purchase_frequency | total_transactions | 0.993 |
+| total_spending_ngn | total_profit_ngn | 0.952 |
+| average_order_value_ngn | average_profit_per_transaction | 0.906 |
+| purchase_frequency | total_campaigns | 0.888 |
+| total_transactions | total_campaigns | 0.881 |
+| purchase_frequency | category_diversity | 0.876 |
+| total_transactions | category_diversity | 0.874 |
+| category_diversity | channel_diversity | 0.830 |
+| purchase_frequency | channel_diversity | 0.803 |
+| total_transactions | channel_diversity | 0.802 |
+
+The results revealed several overlapping relationships. For example, purchase_frequency and total_transactions had an almost perfect correlation, while total_spending_ngn and total_profit_ngn also shared substantial information.
+
+**Removing Strongly Redundant Features**
+
+Three features were initially removed because they were particularly redundant with other candidate variables:
+- total_transactions
+- total_profit_ngn
+- average_profit_per_transaction
+
+Python code:
+```python
+features_to_remove = [
+    'total_transactions',
+    'total_profit_ngn',
+    'average_profit_per_transaction'
+]
+
+selected_features = [
+    col for col in candidate_features
+    if col not in features_to_remove
+]
+
+X_selected = clustering_df[selected_features].copy()
+
+print("Original number of features:", len(candidate_features))
+print("Reduced number of features:", len(selected_features))
+print("Reduced dataset shape:", X_selected.shape)
+
+X_selected.head()
+```
+
+Results:
+| Metric | Result |
+|---|---:|
+| Original features | 20 |
+| Removed features | 3 |
+| Remaining features | 17 |
+| Dataset shape | (9,912, 17) |
+
+**Investigating Remaining Feature Relationships**
+
+Some of the remaining variables were still strongly correlated. Rather than automatically removing every correlated feature, selected pairs were investigated to determine whether they represented distinct aspects of customer behaviour.
+
+Python code:
+```python
+feature_pairs = [
+    ('purchase_frequency', 'category_diversity'),
+    ('purchase_frequency', 'channel_diversity'),
+    ('total_campaigns', 'purchase_frequency'),
+    ('total_spending_ngn', 'average_order_value_ngn'),
+    ('category_diversity', 'channel_diversity')
+]
+
+for feature_1, feature_2 in feature_pairs:
+    correlation = X_selected[feature_1].corr(
+        X_selected[feature_2]
+    )
+
+    print(
+        f'{feature_1} vs {feature_2}: {correlation:.3f}'
+    )
+```
+
+Results:
+| Feature Pair | Correlation |
+|---|---:|
+| purchase_frequency vs category_diversity | 0.876 |
+| purchase_frequency vs channel_diversity | 0.803 |
+| total_campaigns vs purchase_frequency | 0.888 |
+| total_spending_ngn vs average_order_value_ngn | 0.526 |
+| category_diversity vs channel_diversity | 0.830 |
+
+Although some relationships were strong, the variables were retained temporarily because they capture different dimensions of customer behaviour. For example, purchase frequency measures purchasing activity, while category diversity measures the range of product categories purchased.
+
+**Variance Inflation Factor (VIF) Analysis**
+
+Correlation analysis was followed by Variance Inflation Factor (VIF) analysis to investigate multicollinearity among the candidate features.
+
+VIF measures how strongly a feature can be explained by the other features in a dataset. Median imputation was temporarily applied because VIF calculation requires a complete numerical matrix.
+
+Python code:
+```python
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.impute import SimpleImputer
+
+vif_data = X_selected.select_dtypes(include=np.number).copy()
+
+imputer = SimpleImputer(strategy='median')
+vif_values = imputer.fit_transform(vif_data)
+
+vif_df = pd.DataFrame({
+    'feature': vif_data.columns,
+    'VIF': [
+        variance_inflation_factor(vif_values, i)
+        for i in range(vif_values.shape[1])
+    ]
+})
+
+vif_df = vif_df.sort_values('VIF', ascending=False)
+
+vif_df
+```
+
+The analysis was followed by a closer inspection of relationships among purchasing frequency, diversity, and marketing engagement features.
+
+```python
+features_to_check = [
+    'purchase_frequency',
+    'monthly_purchase_frequency',
+    'category_diversity',
+    'channel_diversity',
+    'total_campaigns',
+    'successful_responses',
+    'campaign_response_rate',
+    'campaign_exposed'
+]
+
+correlation_check = (
+    X_selected[features_to_check]
+    .corr()
+    .round(3)
+)
+
+correlation_check
+```
+
+The initial 17-feature selection was subsequently adjusted. campaign_exposed was removed at this stage, and successful_responses was also excluded from the final candidate list.
+
+The VIF calculations were repeated after the adjustments.
+
+**Final Feature Selection**
+
+After the correlation and multicollinearity investigations, the final candidate list was reduced to 15 features.
+
+Python code:
+```python
+selected_features = [
+    'age',
+    'annual_income_ngn',
+    'purchase_frequency',
+    'total_spending_ngn',
+    'average_order_value_ngn',
+    'recency_days',
+    'return_rate',
+    'tenure_days',
+    'category_diversity',
+    'average_discount_pct',
+    'total_campaigns',
+    'campaign_response_rate',
+    'profit_margin',
+    'channel_diversity',
+    'monthly_purchase_frequency'
+]
+
+X_selected = clustering_df[selected_features].copy()
+
+print("Selected dataset shape:", X_selected.shape)
+```
+
+Result:
+
+9,912 × 15
+
+The selected variables represent the following dimensions:
+| Behavioural Dimension | Selected Features |
+|---|---|
+| Demographics | age, annual_income_ngn |
+| Purchasing activity | purchase_frequency, monthly_purchase_frequency |
+| Spending behaviour | total_spending_ngn, average_order_value_ngn |
+| Purchase timing | recency_days |
+| Returns | return_rate |
+| Customer relationship | tenure_days |
+| Product preferences | category_diversity |
+| Discount behaviour | average_discount_pct |
+| Marketing engagement | total_campaigns, campaign_response_rate |
+| Financial performance | profit_margin |
+| Channel behaviour | channel_diversity |
+
+These 15 variables formed the final feature-selection output before missing-value treatment.
+
+**Missing-Value Assessment**
+
+Before preprocessing, the selected dataset was examined for missing values.
+
+Python code:
+```python
+missing_summary = pd.DataFrame({
+    'missing_count': X_selected.isnull().sum(),
+    'missing_percentage': X_selected.isnull().mean() * 100
+})
+
+missing_summary = missing_summary[
+    missing_summary['missing_count'] > 0
+].sort_values('missing_percentage', ascending=False)
+
+missing_summary
+```
+
+Result:
+| Feature | Missing Count | Missing Percentage |
+|---|---:|---:|
+| campaign_response_rate | 1,226 | 12.37% |
+
+All other selected features had no missing values.
+
+The missing campaign response rates were associated with customers who had no recorded campaign exposure. Since a customer cannot have a response rate without campaign exposure, these missing values required deliberate treatment rather than being interpreted as ordinary missing observations.
+
+**Handling Missing Campaign Response Rates**
+
+A separate preprocessing dataset was created to preserve the original selected features while applying the missing-value treatment.
+
+A binary campaign exposure indicator was created using total_campaigns. Missing campaign response rates were then replaced with zero.
+
+Python code:
+```python
+X_preprocessed = X_selected.copy()
+
+# Identify customers with campaign exposure
+X_preprocessed['campaign_exposed'] = (
+    X_preprocessed['total_campaigns'] > 0
+).astype(int)
+
+# Replace missing response rates with zero
+X_preprocessed['campaign_response_rate'] = (
+    X_preprocessed['campaign_response_rate'].fillna(0)
+)
+
+# Verify missing values
+X_preprocessed.isnull().sum().sum()
+```
+
+Result:
+
+No missing values
+
+The treatment retained the distinction between customers who had no campaign exposure and customers who were exposed but did not respond. The campaign_exposed variable captures exposure status, while campaign_response_rate captures the response proportion.
+
+The resulting preprocessing dataset contains 16 features: the 15 selected features plus the newly created campaign_exposed indicator.
+
+**Feature Selection and Preprocessing Summary**
+| Stage | Customers | Features |
+|---|---:|---:|
+| Initial candidate dataset | 9,912 | 20 |
+| After initial redundancy reduction | 9,912 | 17 |
+| Final selected feature dataset | 9,912 | 15 |
+| After adding campaign exposure indicator | 9,912 | 16 |
+| After missing-value treatment | 9,912 | 16 |
+
+The feature selection process reduced the initial 20 candidate variables to 15 selected features. A campaign exposure indicator was subsequently added, resulting in 16 features with no remaining missing values.
+
+The resulting X_preprocessed dataset is the working dataset for the next preprocessing stages. Feature scaling is still required before K-Means clustering because the selected variables have different 
+measurement scales, including age, income, spending, frequency, and percentage-based measures.
+
+## FEATURE TRANSFORMATION
+
+Before scaling the selected features, their distributions were examined to identify skewness and extreme values.
+
+This step was necessary because K-Means uses distance calculations. Features with highly skewed distributions or extreme observations can disproportionately influence the clustering process.
+
+The transformation stage involved:
+1.	Examining the distributions of the selected features.
+2.	Investigating the extreme values in annual income.
+3.	Correcting confirmed income anomalies.
+4.	Applying logarithmic transformations to selected skewed features.
+5.	Imputing the remaining missing income values.
+6.	Validating the transformed dataset.
+7.	7.2 Examining Feature Distributions
+
+Histograms were generated for all features in X_preprocessed to understand their distributions before transformation.
+
+Python code:
+```python
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+X_preprocessed.hist(
+    figsize=(20, 16),
+    bins=30,
+    edgecolor='black'
+)
+
+plt.tight_layout()
+plt.show()
+```
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Distribution%20of%20Selected%20Features%20Before%20Transformation.png)
+
+The histograms revealed that some features had positively skewed distributions. The annual income histogram was particularly compressed near zero because of an extremely large observation stretching the horizontal axis.
+
+This required further investigation before applying any transformation.
+
+**Investigating Annual Income Distribution**
+
+Descriptive statistics were calculated to examine the income distribution, including its lower and upper percentiles.
+
+Python code:
+```python
+income_summary = X_preprocessed['annual_income_ngn'].describe(
+    percentiles=[0.01, 0.05, 0.25, 0.50, 0.75, 0.95, 0.99]
+)
+
+income_summary
+```
+
+Results:
+| Statistic | Annual Income (NGN) |
+|---|---:|
+| Count | 9,912 |
+| Mean | 3,959,664 |
+| Standard deviation | 34,716,710 |
+| Minimum | 350,000 |
+| 1st percentile | 656,458 |
+| 5th percentile | 960,507 |
+| 25th percentile | 1,667,534 |
+| Median | 2,378,022 |
+| 75th percentile | 3,390,524 |
+| 95th percentile | 5,827,999 |
+| 99th percentile | 8,645,892 |
+| Maximum | 1,000,000,000 |
+
+The maximum income value of approximately ₦1 billion was substantially higher than the 99th percentile of approximately ₦8.65 million.
+
+The 15 largest income observations were also inspected.
+```python
+X_preprocessed['annual_income_ngn'].nlargest(15)
+```
+
+The inspection revealed 12 observations with an exact value of ₦999,999,999, followed by observations of ₦18 million.
+The 12 identical extreme values were treated as confirmed data anomalies rather than genuine customer income observations.
+
+**Measuring Feature Skewness**
+
+Skewness was calculated across the numerical features to identify variables requiring transformation.
+
+Python code:
+```python
+skewness = X_preprocessed.skew(numeric_only=True)
+
+skewness = skewness.sort_values(ascending=False)
+
+skewness
+```
+
+Results:
+| Feature | Skewness |
+|---|---:|
+| annual_income_ngn | 28.600 |
+| average_order_value_ngn | 6.808 |
+| return_rate | 2.782 |
+| total_spending_ngn | 2.235 |
+| recency_days | 2.038 |
+| monthly_purchase_frequency | 1.471 |
+| average_discount_pct | 1.132 |
+| campaign_response_rate | 0.937 |
+| total_campaigns | 0.917 |
+| purchase_frequency | 0.711 |
+| age | 0.256 |
+| tenure_days | 0.006 |
+| category_diversity | -0.014 |
+| channel_diversity | -0.270 |
+| profit_margin | -1.567 |
+| campaign_exposed | -2.287 |
+
+Annual income had the highest positive skewness, largely influenced by the confirmed extreme values. Other features, particularly average order value, return rate, total spending, and recency, also showed positive skewness.
+
+**Correcting Confirmed Annual Income Anomalies**
+
+The 12 observations with an income value of ₦999,999,999 were flagged and replaced with missing values.
+
+An audit column, income_error, was also created to preserve information about the affected records.
+
+Python code:
+```python
+# Identify the confirmed anomalous income values
+income_error_mask = (
+    X_preprocessed['annual_income_ngn'] == 999_999_999
+)
+
+# Create an audit flag
+X_preprocessed['income_error'] = income_error_mask.astype(int)
+
+# Replace confirmed errors with NaN
+X_preprocessed.loc[
+    income_error_mask, 'annual_income_ngn'
+] = np.nan
+
+# Check the correction
+print("Flagged records:", income_error_mask.sum())
+print(
+    "Missing income values:",
+    X_preprocessed['annual_income_ngn'].isna().sum()
+)
+```
+
+Results:
+| Metric | Result |
+|---|---:|
+| Flagged records | 12 |
+| Missing income values created | 12 |
+
+The correction prevented the extreme observations from distorting subsequent transformations.
+
+**Reassessing Income Distribution After Correction**
+
+The income statistics and skewness were recalculated after removing the confirmed anomalies.
+
+Python code:
+```python
+print(
+    X_preprocessed['annual_income_ngn'].describe(
+        percentiles=[0.01, 0.05, 0.25, 0.50, 0.75, 0.95, 0.99]
+    )
+)
+
+print(
+    "\nIncome skewness:",
+    X_preprocessed['annual_income_ngn'].skew()
+)
+```
+
+Results:
+| Statistic | Annual Income (NGN) |
+|---|---:|
+| Count | 9,900 |
+| Mean | 2,752,342 |
+| Standard deviation | 1,609,547 |
+| Minimum | 350,000 |
+| 1st percentile | 656,389 |
+| 5th percentile | 960,474 |
+| 25th percentile | 1,667,330 |
+| Median | 2,378,022 |
+| 75th percentile | 3,387,924 |
+| 95th percentile | 5,801,045 |
+| 99th percentile | 8,379,819 |
+| Maximum | 18,000,000 |
+
+Skewness substantially reduced
+
+Before correction: 28.600
+
+After correction: 1.947
+
+The correction substantially reduced the income skewness. However, the distribution remained positively skewed, making it a suitable candidate for logarithmic transformation.
+
+The corrected income distribution was also visualised.
+```python
+plt.figure(figsize=(8, 5))
+
+sns.histplot(
+    X_preprocessed['annual_income_ngn'].dropna(),
+    bins=40,
+    kde=True
+)
+
+plt.title('Annual Income Distribution After Anomaly Correction')
+plt.xlabel('Annual Income (NGN)')
+plt.show()
+```
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Annual%20Income%20Distribution%20After%20Anomaly%20Correction.png)
+
+**Applying Logarithmic Transformation**
+
+Logarithmic transformation was applied to selected positively skewed features to reduce the influence of large values and make their distributions more manageable.
+
+The np.log1p() function was used because it calculates the natural logarithm of one plus the original value.
+
+A separate working copy was created to preserve the preceding dataset.
+
+Python code:
+```python
+X_transformed = X_preprocessed.copy()
+
+log_features = [
+    'annual_income_ngn',
+    'total_spending_ngn',
+    'average_order_value_ngn',
+    'recency_days',
+    'monthly_purchase_frequency'
+]
+
+for col in log_features:
+    X_transformed[col] = np.log1p(X_transformed[col])
+
+X_transformed[log_features].skew().sort_values(
+    ascending=False
+)
+```
+
+Results:
+| Feature | Skewness After Transformation |
+|---|---:|
+| monthly_purchase_frequency | 0.602 |
+| average_order_value_ngn | 0.087 |
+| annual_income_ngn | -0.017 |
+| recency_days | -0.150 |
+| total_spending_ngn | -0.744 |
+
+The logarithmic transformation substantially reduced the skewness of the selected features.
+
+Annual income became approximately symmetric, while average order value and recency also showed considerable improvements.
+
+**Checking Missing and Infinite Values**
+
+Following the logarithmic transformation, the dataset was checked for missing and infinite values.
+
+Python code:
+```python
+print("Missing values:", X_transformed.isnull().sum().sum())
+
+print(
+    "Infinite values:",
+    np.isinf(
+        X_transformed.select_dtypes(include=np.number)
+    ).sum().sum()
+)
+```
+
+Results:
+| Assessment | Result |
+|---|---:|
+| Missing values | 12 |
+| Infinite values | 0 |
+
+The 12 missing values were the annual income observations deliberately replaced during anomaly correction.
+
+**Imputing the Remaining Income Values**
+
+Median imputation was applied to the 12 missing annual income values.
+
+The median was preferred because it is less sensitive to extreme observations than the mean.
+
+Python code:
+```python
+# Calculate median annual income
+income_median = X_transformed['annual_income_ngn'].median()
+
+# Impute missing income values
+X_transformed['annual_income_ngn'] = (
+    X_transformed['annual_income_ngn'].fillna(income_median)
+)
+
+# Verify
+print("Missing values:", X_transformed.isnull().sum().sum())
+print("Income median used:", income_median)
+```
+
+Results:
+| Metric | Result |
+|---|---:|
+| Missing values after imputation | 0 |
+| Median used | 14.681780 |
+
+The median of 14.681780 represents the transformed income scale, not the original income in naira.
+
+**Final Dataset Validation**
+
+The transformed dataset was validated to confirm its dimensions and ensure that no missing or infinite values remained.
+
+Python code:
+```python
+print("Dataset shape:", X_transformed.shape)
+
+print("\nMissing values:")
+print(X_transformed.isnull().sum().sum())
+
+print("\nInfinite values:")
+print(
+    np.isinf(
+        X_transformed.select_dtypes(include=np.number)
+    ).sum().sum()
+)
+```
+
+Results:
+
+The final dataset contained 9,912 customers and 17 columns, with no missing or infinite values.
+
+Important: The 17 columns include the 15 selected clustering features, the campaign_exposed indicator, and the income_error audit flag. The audit flag should not automatically be included in K-Means.
+
+**Feature Transformation Summary**
+
+The transformation stage addressed the distributional issues identified during feature inspection.
+| Stage | Action |
+|---|---|
+| Distribution analysis | Examined numerical feature histograms |
+| Income investigation | Identified 12 extreme income observations |
+| Anomaly correction | Replaced confirmed income errors with missing values |
+| Log transformation | Applied log1p() to five selected features |
+| Missing-value treatment | Median-imputed transformed income |
+| Validation | Confirmed zero missing and infinite values |
+
+The resulting X_transformed dataset is ready for the next preprocessing stage: feature scaling.
+
+## FEATURE SCALING
+
+After feature transformation, the next step was to standardise the selected clustering features.
+
+The selected variables have different measurement scales. For example, age is measured in years, income and spending are monetary values, while return rate and profit margin are proportions.
+
+Since K-Means uses distance calculations to determine customer similarity, variables with larger numerical ranges could disproportionately influence the clustering results.
+
+To prevent this, StandardScaler was applied to the continuous numerical features.
+
+The binary campaign_exposed feature was deliberately excluded from scaling so that its original 0 and 1 values would be preserved.
+
+**Separating Continuous and Binary Features**
+
+The audit column income_error was first removed because it was created for data-quality tracking and was not intended to represent customer behaviour.
+
+The remaining features were divided into:
+- Continuous features: the 15 numerical customer-behaviour and demographic variables.
+- Binary feature: campaign_exposed, representing whether a customer had recorded campaign exposure.
+  
+Python code:
+```python
+from sklearn.preprocessing import StandardScaler
+
+# Remove audit columns from clustering features
+model_features = X_transformed.drop(
+    columns=['income_error'],
+    errors='ignore'
+).copy()
+
+# Separate binary feature
+binary_features = ['campaign_exposed']
+
+continuous_features = [
+    col for col in model_features.columns
+    if col not in binary_features
+]
+```
+
+This separation ensured that the continuous features could be standardised without changing the interpretation of the binary campaign exposure indicator.
+
+**Applying StandardScaler**
+
+StandardScaler was used to standardise the continuous features.
+
+After transformation, each continuous feature has an approximate mean of zero and standard deviation of one.
+
+Python code:
+```python
+# Scale continuous features
+scaler = StandardScaler()
+
+X_scaled_continuous = pd.DataFrame(
+    scaler.fit_transform(model_features[continuous_features]),
+    columns=continuous_features,
+    index=model_features.index
+)
+
+# Recombine with the original binary feature
+X_scaled = pd.concat(
+    [
+        X_scaled_continuous,
+        model_features[binary_features]
+    ],
+    axis=1
+)
+
+# Preserve the original feature order
+X_scaled = X_scaled[model_features.columns]
+```
+
+The original binary values of campaign_exposed were retained without standardisation.
+
+**Validating the Scaled Dataset**
+
+The scaled dataset was inspected to confirm its dimensions, feature means, standard deviations, and missing-value count.
+
+Python code:
+```python
+print("Dataset shape:", X_scaled.shape)
+
+print("\nFeature means:")
+print(X_scaled[continuous_features].mean().round(3))
+
+print("\nFeature standard deviations:")
+print(X_scaled[continuous_features].std().round(3))
+
+print("\nMissing values:", X_scaled.isnull().sum().sum())
+```
+
+Results:
+The results confirmed that all 15 continuous features had been successfully standardised. Their means were approximately zero, and their standard deviations were approximately one.
+
+The final dataset retained all 9,912 customers and 16 features, with no missing values.
+
+**Feature Scaling Summary**
+| Item | Treatment |
+|---|---|
+| Scaling method | StandardScaler |
+| Continuous features | 15 |
+| Binary features | 1 |
+| Binary feature | campaign_exposed |
+| Audit columns | Removed |
+| Final dataset shape | (9,912, 16) |
+| Missing values | 0 |
+
+**Conclusion**
+
+Feature scaling was successfully completed. The continuous features now share a common scale, while the binary campaign exposure feature retains its original 0 and 1 values.
+
+The resulting X_scaled dataset is the standardised input for the next stage: Principal Component Analysis (PCA).
+
+## PRINCIPAL COMPONENT ANALYSIS (PCA)
+
+After feature scaling, Principal Component Analysis (PCA) was applied to reduce the dimensionality of the customer dataset while preserving as much information as possible.
+
+The scaled dataset contained 16 features. Although these features represented different aspects of customer behaviour, some relationships existed between them.
+
+PCA transforms the original variables into a smaller set of new variables called principal components. These components capture the maximum possible variance in the data while being uncorrelated with one another.
+
+The objectives were to:
+- Reduce the number of dimensions entering K-Means.
+- Retain as much information as possible from the original features.
+- Reduce the effect of overlapping information.
+- Produce a more compact representation of customer behaviour for clustering.
+
+**Applying PCA to the Scaled Dataset**
+
+PCA was initially performed without specifying the number of components. This allowed the algorithm to calculate the explained variance of all 16 possible principal components.
+
+Python code:
+```python
+from sklearn.decomposition import PCA
+
+# Initialize PCA
+pca = PCA()
+
+# Fit and transform the scaled dataset
+X_pca = pca.fit_transform(X_scaled)
+
+# Explained variance
+explained_variance = pca.explained_variance_ratio_
+
+# Cumulative explained variance
+cumulative_variance = np.cumsum(explained_variance)
+
+# Create summary table
+pca_summary = pd.DataFrame({
+    'Principal Component': [
+        f'PC{i+1}' for i in range(len(explained_variance))
+    ],
+    'Explained Variance': explained_variance,
+    'Cumulative Variance': cumulative_variance
+})
+
+pca_summary
+```
+
+**Explained Variance Analysis**
+
+The explained variance ratio indicates the proportion of the total variation in the original dataset captured by each principal component.
+
+The cumulative explained variance shows how much information is retained as additional components are included.
+
+Results:
