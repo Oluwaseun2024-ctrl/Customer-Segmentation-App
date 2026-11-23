@@ -3202,3 +3202,985 @@ The explained variance ratio indicates the proportion of the total variation in 
 The cumulative explained variance shows how much information is retained as additional components are included.
 
 Results:
+| Principal Component | Explained Variance | Cumulative Variance |
+|---|---:|---:|
+| PC1 | 29.79% | 29.79% |
+| PC2 | 12.30% | 42.09% |
+| PC3 | 9.39% | 51.48% |
+| PC4 | 6.87% | 58.35% |
+| PC5 | 6.67% | 65.02% |
+| PC6 | 6.58% | 71.60% |
+| PC7 | 6.51% | 78.12% |
+| PC8 | 6.21% | 84.33% |
+| PC9 | 5.85% | 90.18% |
+| PC10 | 4.03% | 94.21% |
+| PC11 | 2.04% | 96.25% |
+| PC12 | 1.60% | 97.85% |
+| PC13 | 1.07% | 98.91% |
+| PC14 | 0.60% | 99.52% |
+| PC15 | 0.39% | 99.91% |
+| PC16 | 0.09% | 100.00% |
+
+The first principal component explained approximately 29.79% of the total variance, while the first nine components collectively explained approximately 90.18%.
+
+This indicated that a substantial proportion of the information in the original 16-dimensional dataset could be represented using nine principal components.
+
+**Visualising Cumulative Explained Variance**
+
+A cumulative explained variance plot was generated to determine how many principal components were required to retain different levels of information.
+
+Python code:
+```python
+plt.figure(figsize=(10, 6))
+
+plt.plot(
+    range(1, len(cumulative_variance) + 1),
+    cumulative_variance,
+    marker='o'
+)
+
+plt.axhline(
+    y=0.80,
+    linestyle='--',
+    label='80% variance'
+)
+
+plt.axhline(
+    y=0.90,
+    linestyle='--',
+    label='90% variance'
+)
+
+plt.xlabel('Number of Principal Components')
+plt.ylabel('Cumulative Explained Variance')
+plt.title('PCA - Cumulative Explained Variance')
+plt.xticks(range(1, len(cumulative_variance) + 1))
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
+```
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/PCA%20Cumulative%20Explained%20Variance.png)
+
+The plot showed that:
+- Seven components retained approximately 78.12% of the variance.
+- Eight components retained approximately 84.33%.
+- Nine components retained approximately 90.18%.
+- 
+Nine components were therefore selected to retain more than 90% of the information represented by the original features.
+
+**PCA Scree Plot**
+
+A scree plot was also generated to examine the individual contribution of each principal component.
+
+Python code:
+```python
+plt.figure(figsize=(10, 6))
+
+plt.plot(
+    range(1, len(explained_variance) + 1),
+    explained_variance,
+    marker='o'
+)
+
+plt.xlabel('Principal Component')
+plt.ylabel('Explained Variance Ratio')
+plt.title('PCA Scree Plot')
+plt.xticks(range(1, len(explained_variance) + 1))
+plt.grid(alpha=0.3)
+
+plt.show()
+```
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/PCA%20Scree%20Plot.png)
+
+The scree plot provided a visual representation of how much variance each additional component contributed. The explained variance generally decreased as more components were introduced.
+
+Together, the cumulative variance plot and scree plot supported the decision to retain nine components.
+
+**Creating the Reduced PCA Dataset**
+
+After reviewing the explained variance, PCA was configured to retain nine principal components.
+
+Python code:
+```python
+pca_9 = PCA(n_components=9)
+
+X_pca_9 = pca_9.fit_transform(X_scaled)
+
+print("Original feature shape:", X_scaled.shape)
+print("PCA feature shape:", X_pca_9.shape)
+
+print(
+    "Total explained variance:",
+    round(pca_9.explained_variance_ratio_.sum() * 100, 2),
+    "%"
+)
+```
+
+Results:
+| Metric | Result |
+|---|---:|
+| Original dataset shape | (9,912, 16) |
+| Reduced dataset shape | (9,912, 9) |
+| Original features | 16 |
+| Principal components retained | 9 |
+| Explained variance retained | 90.18% |
+
+The dataset was reduced from 16 original features to nine principal components, representing a reduction of approximately 43.75% in dimensionality while retaining 90.18% of the total variance.
+
+**Final PCA Validation**
+
+Before proceeding to K-Means, the reduced dataset was checked to confirm its dimensions, retained variance, and missing-value status.
+
+Python code:
+```python
+print("Original feature shape:", X_scaled.shape)
+print("Reduced feature shape:", X_pca_9.shape)
+
+print(
+    "Explained variance retained:",
+    round(pca_9.explained_variance_ratio_.sum() * 100, 2),
+    "%"
+)
+
+print("Missing values:", np.isnan(X_pca_9).sum())
+```
+
+Results:
+| Validation | Result |
+|---|---:|
+| Original dataset | (9,912, 16) |
+| Reduced dataset | (9,912, 9) |
+| Explained variance | 90.18% |
+| Missing values | 0 |
+
+The validation confirmed that the PCA transformation was successful and that the reduced dataset contained no missing values.
+
+**PCA Summary**
+
+PCA successfully reduced the dimensionality of the customer dataset while retaining most of its information.
+| Item | Final Result |
+|---|---|
+| Input dataset | X_scaled |
+| Original dimensions | 16 |
+| PCA method | Principal Component Analysis |
+| Components retained | 9 |
+| Variance retained | 90.18% |
+| Output dataset | X_pca_9 |
+| Final dimensions | 9,912 × 9 |
+| Missing values | 0 |
+
+**Conclusion**
+
+The nine-component PCA dataset retained approximately 90.18% of the variance from the original 16 features. This provided a more compact representation of customer behaviour for the next stage of analysis.
+The resulting X_pca_9 dataset is ready for K-Means clustering.
+
+## CUSTOMER SEGMENTATION USING K-MEANS CLUSTERING
+
+After completing feature selection, transformation, scaling, and dimensionality reduction, K-Means clustering was applied to identify groups of customers with similar behavioural characteristics.
+
+The clustering algorithm used the reduced PCA dataset, X_pca_9, containing 9,912 customers represented by nine principal components.
+
+The objectives were to:
+- Determine an appropriate number of customer segments.
+- Group customers based on similarities in their purchasing and behavioural patterns.
+- Examine the characteristics of the resulting clusters.
+- Evaluate the quality of the segmentation.
+- Assign cluster labels to the customer-level dataset for further business interpretation.
+
+**Determining the Optimal Number of Clusters**
+
+The Elbow Method and Silhouette Score were used to investigate suitable values of K.
+
+The Elbow Method evaluates how the within-cluster sum of squared distances (inertia) decreases as the number of clusters increases.
+
+The Silhouette Score measures how well customers fit within their assigned clusters compared with neighbouring clusters. Higher scores generally indicate better-defined clusters.
+
+The analysis tested values of K from 2 to 10.
+
+Python code:
+```python
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+
+inertia_scores = []
+silhouette_scores = []
+
+k_values = range(2, 11)
+
+for k in k_values:
+
+    kmeans = KMeans(
+        n_clusters=k,
+        random_state=42,
+        n_init=20
+    )
+
+    cluster_labels = kmeans.fit_predict(X_pca_9)
+
+    inertia_scores.append(kmeans.inertia_)
+
+    silhouette = silhouette_score(
+        X_pca_9,
+        cluster_labels,
+        sample_size=3000,
+        random_state=42
+    )
+
+    silhouette_scores.append(silhouette)
+
+    print(
+        f"K={k} | "
+        f"Inertia={kmeans.inertia_:.2f} | "
+        f"Silhouette={silhouette:.4f}"
+    )
+```
+
+Results:
+| Number of Clusters (K) | Inertia | Silhouette Score |
+|---:|---:|---:|
+| 2 | 102,169.30 | 0.2334 |
+| 3 | 92,329.18 | 0.1654 |
+| 4 | 86,001.88 | 0.1453 |
+| 5 | 80,705.14 | 0.1512 |
+| 6 | 76,714.07 | 0.1431 |
+| 7 | 73,500.76 | 0.1408 |
+| 8 | 70,653.92 | 0.1190 |
+| 9 | 68,227.55 | 0.1121 |
+| 10 | 66,034.45 | 0.1142 |
+
+The results showed that inertia decreased as the number of clusters increased, which is expected because adding more clusters generally reduces within-cluster distances.
+
+The highest Silhouette Score was obtained at K=2, with a score of 0.2334. However, the score declined when additional clusters were introduced, indicating that increasing the number of clusters did not improve the overall separation of the groups according to this metric.
+
+**Visualising the Elbow Method and Silhouette Scores**
+
+Both evaluation methods were visualised to compare their behaviour across the tested cluster values.
+
+Python code:
+```python
+fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+
+# Elbow Method
+axes[0].plot(
+    list(k_values),
+    inertia_scores,
+    marker='o'
+)
+axes[0].set_title('Elbow Method')
+axes[0].set_xlabel('Number of Clusters (K)')
+axes[0].set_ylabel('Inertia')
+axes[0].grid(alpha=0.3)
+
+# Silhouette Score
+axes[1].plot(
+    list(k_values),
+    silhouette_scores,
+    marker='o'
+)
+axes[1].set_title('Silhouette Score')
+axes[1].set_xlabel('Number of Clusters (K)')
+axes[1].set_ylabel('Silhouette Score')
+axes[1].grid(alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Elbow%20Method%20and%20Silhouette%20Score.png)
+
+The plots confirmed that K=2 produced the highest Silhouette Score. However, the Elbow Method did not provide an overwhelmingly distinct cluster count from the supplied results.
+
+Therefore, K=2 and K=3 were selected for further investigation rather than relying exclusively on the numerical scores.
+
+**Comparing Cluster Sizes for K=2 and K=3**
+
+The cluster distributions were examined to determine how customers would be divided under the two candidate solutions.
+
+Python code:
+```python
+# Fit K-Means with 2 clusters
+kmeans_2 = KMeans(
+    n_clusters=2,
+    random_state=42,
+    n_init=20
+)
+
+labels_2 = kmeans_2.fit_predict(X_pca_9)
+
+# Fit K-Means with 3 clusters
+kmeans_3 = KMeans(
+    n_clusters=3,
+    random_state=42,
+    n_init=20
+)
+
+labels_3 = kmeans_3.fit_predict(X_pca_9)
+
+# Compare cluster sizes
+cluster_comparison = pd.DataFrame({
+    'K=2': pd.Series(labels_2).value_counts().sort_index(),
+    'K=3': pd.Series(labels_3).value_counts().sort_index()
+})
+
+print(cluster_comparison)
+```
+
+Results:
+| Cluster | K=2 | K=3 |
+|---:|---:|---:|
+| 0 | 4,463 | 2,990 |
+| 1 | 5,449 | 4,219 |
+| 2 | — | 2,703 |
+| **Total** | **9,912** | **9,912** |
+
+Both solutions produced reasonably populated clusters without extremely small groups.
+
+The K=2 solution divided customers into two broad groups, while K=3 provided an additional group that could potentially reveal more specific customer behaviour.
+
+The distributions were visualised below.
+
+```python
+fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+cluster_comparison['K=2'].plot(
+    kind='bar', ax=axes[0]
+)
+axes[0].set_title('Customer Distribution: K=2')
+axes[0].set_xlabel('Cluster')
+axes[0].set_ylabel('Number of Customers')
+
+cluster_comparison['K=3'].plot(
+    kind='bar', ax=axes[1]
+)
+axes[1].set_title('Customer Distribution: K=3')
+axes[1].set_xlabel('Cluster')
+axes[1].set_ylabel('Number of Customers')
+
+plt.tight_layout()
+plt.show()
+```
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Distribution%20for%20K%3D2%20and%20K%3D3.png)
+
+**Profiling the K=2 Clusters**
+
+Cluster profiling was performed using the original customer-level features rather than the PCA components.
+
+This made it possible to interpret the clusters using familiar business variables such as purchase frequency, spending, recency, product diversity, and marketing engagement.
+
+Python code:
+```python
+# Create a profiling dataset
+profile_df = clustering_df[selected_features].copy()
+
+# Assign K=2 cluster labels
+profile_df['cluster'] = labels_2
+
+# Calculate average feature values per cluster
+cluster_profile_2 = profile_df.groupby('cluster').mean().T
+
+display(cluster_profile_2)
+```
+
+Results:
+| Feature | Cluster 0 | Cluster 1 |
+|---|---:|---:|
+| Age | 36.32 | 36.39 |
+| Annual income (NGN) | 4,322,086 | 3,662,822 |
+| Purchase frequency | 2.22 | 9.61 |
+| Total spending (NGN) | 170,402 | 717,395 |
+| Average order value (NGN) | 80,511 | 82,381 |
+| Recency (days) | 248.48 | 88.97 |
+| Return rate | 3.79% | 4.67% |
+| Tenure (days) | 639.86 | 772.67 |
+| Category diversity | 1.84 | 4.72 |
+| Average discount | 15.87% | 15.71% |
+| Total campaigns | 1.12 | 5.02 |
+| Campaign response rate | 30.57% | 33.32% |
+| Profit margin | 28.28% | 26.23% |
+| Channel diversity | 1.67 | 3.53 |
+| Monthly purchase frequency | 0.76 | 0.66 |
+
+Cluster 0 generally contained customers with lower purchase frequency, lower total spending, fewer product categories, and longer purchasing recency.
+
+Cluster 1 contained customers with higher purchase frequency, substantially greater total spending, broader product preferences, and more campaign exposure.
+
+This indicated that the two-cluster solution primarily distinguished customers with relatively low purchasing activity from those with stronger overall purchasing activity.
+
+**Profiling the K=3 Clusters**
+
+The three-cluster solution was investigated to determine whether it provided more detailed behavioural distinctions.
+
+Python code:
+```python
+# Create a profiling dataset using original features
+profile_df_3 = clustering_df[selected_features].copy()
+
+# Assign K=3 cluster labels
+profile_df_3['cluster'] = labels_3
+
+# Calculate mean feature values per cluster
+cluster_profile_3 = profile_df_3.groupby('cluster').mean().T
+
+display(cluster_profile_3)
+```
+
+Results:
+| Feature | Cluster 0 | Cluster 1 | Cluster 2 |
+|---|---:|---:|---:|
+| Age | 36.26 | 36.44 | 36.36 |
+| Annual income (NGN) | 4,754,979 | 3,451,356 | 3,873,300 |
+| Purchase frequency | 4.20 | 10.70 | 1.69 |
+| Total spending (NGN) | 440,901 | 736,853 | 89,721 |
+| Average order value (NGN) | 118,207 | 71,553 | 56,564 |
+| Recency (days) | 223.83 | 68.88 | 234.51 |
+| Return rate | 5.68% | 4.36% | 2.58% |
+| Tenure (days) | 908.78 | 722.38 | 481.32 |
+| Category diversity | 2.99 | 4.99 | 1.46 |
+| Average discount | 15.76% | 15.72% | 15.91% |
+| Total campaigns | 2.12 | 5.62 | 0.85 |
+| Campaign response rate | 35.21% | 32.68% | 26.69% |
+| Profit margin | 26.29% | 26.36% | 29.34% |
+| Channel diversity | 2.53 | 3.65 | 1.37 |
+| Monthly purchase frequency | 0.37 | 0.75 | 1.00 |
+
+The three clusters showed more distinct behavioural patterns.
+- Cluster 0: Customers with moderate purchase frequency, relatively high average order value, and substantial customer tenure. Their average recency was relatively high, suggesting that many had not purchased recently.
+- Cluster 1: Customers with the highest purchase frequency, highest total spending, broadest category diversity, and greatest channel diversity. They also had the lowest average recency.
+- Cluster 2: Customers with the lowest purchase frequency, lowest total spending, limited product and channel diversity, and fewer recorded campaign interactions.
+
+These differences suggested that K=3 offered a more detailed customer segmentation structure.
+
+**Comparing Cluster Median Values**
+
+Because means can be influenced by extreme observations, cluster medians were also calculated to provide another perspective on the typical customer in each group.
+
+Python code:
+```python
+cluster_median_3 = profile_df_3.groupby('cluster').median().T
+
+display(cluster_median_3)
+Selected median results:
+```
+
+| Feature | Cluster 0 | Cluster 1 | Cluster 2 |
+|---|---:|---:|---:|
+| Purchase frequency | 4 | 10 | 1 |
+| Total spending (NGN) | 300,342 | 574,084 | 56,189 |
+| Average order value (NGN) | 77,971 | 52,076 | 35,155 |
+| Recency (days) | 178 | 52 | 151 |
+| Category diversity | 3 | 5 | 1 |
+| Total campaigns | 2 | 5 | 1 |
+| Campaign response rate | 33.33% | 33.33% | 0% |
+| Channel diversity | 3 | 4 | 1 |
+
+The median results reinforced the differences observed in the mean profiles.
+
+Cluster 1 had the highest typical purchase frequency and spending, while Cluster 2 had the lowest. Cluster 0 occupied an intermediate position in several purchasing measures.
+
+The median profile also showed that the typical customer in Cluster 2 had a campaign response rate of zero. This should be interpreted alongside campaign exposure, because customers without campaign exposure were assigned a response rate of zero during preprocessing.
+
+**Visualising the Three Customer Segments**
+
+The three-cluster solution was visualised using the first two principal components.
+
+Although the clustering model used all nine principal components, the first two components provided a two-dimensional representation of the customer distribution.
+
+Python code:
+```python
+plt.figure(figsize=(10, 7))
+
+plt.scatter(
+    X_pca_9[:, 0],
+    X_pca_9[:, 1],
+    c=labels_3,
+    cmap='viridis',
+    alpha=0.5,
+    s=15
+)
+
+plt.title('K-Means Customer Segmentation (K=3)')
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.colorbar(label='Customer Cluster')
+
+plt.show()
+```
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Segmentation%20Visualisation%20Using%20the%20First%20Two%20Principal%20Components.png)
+
+The plot provided a visual representation of how the three customer groups were distributed across the first two principal components.
+
+It is important to note that this is a two-dimensional projection of a nine-dimensional clustering solution. Consequently, some overlap in the scatter plot does not necessarily mean that the clusters overlap to the same extent in the full PCA space.
+
+**Selecting the K=3 Model**
+
+Although K=2 produced the highest Silhouette Score, K=3 was selected as the provisional segmentation model because its cluster profiles revealed three more actionable behavioural groups.
+The decision was based on the combination of:
+- Cluster population distribution.
+- Differences in purchasing frequency and spending.
+- Differences in recency and product diversity.
+- Differences in channel usage and campaign engagement.
+- The business usefulness of distinguishing three customer groups rather than two broad categories.
+
+This was a business-oriented modelling decision, not evidence that K=3 was mathematically superior to K=2.
+
+The three-cluster solution therefore became the candidate model for subsequent evaluation and business interpretation.
+
+**Fitting the Final Candidate K-Means Model**
+
+The K-Means model was fitted again using three clusters. The resulting cluster labels were attached to the original customer-level dataset.
+
+Python code:
+```python
+# Initialize the final candidate K-Means model
+final_kmeans = KMeans(
+    n_clusters=3,
+    random_state=42,
+    n_init=20
+)
+
+# Fit model and generate cluster labels
+final_labels = final_kmeans.fit_predict(X_pca_9)
+
+# Attach cluster labels to customer-level data
+customer_segments = clustering_df.copy()
+
+customer_segments['cluster'] = final_labels
+
+# Verify cluster distribution
+print(customer_segments['cluster'].value_counts().sort_index())
+
+print("\nDataset shape:", customer_segments.shape)
+print("Unique customers:", customer_segments['customer_id'].nunique())
+```
+
+Results:
+| Cluster | Number of Customers | Percentage |
+|---|---:|---:|
+| Cluster 0 | 2,990 | 30.17% |
+| Cluster 1 | 4,219 | 42.57% |
+| Cluster 2 | 2,703 | 27.26% |
+| **Total** | **9,912** | **100%** |
+
+The resulting customer_segments dataset contained all 9,912 customers, their original customer-level features, and an additional cluster column.
+
+**Evaluating the Final K-Means Model**
+
+Three clustering evaluation metrics were used to assess the final candidate model:
+1.	Silhouette Score: Measures how well-separated the clusters are. Higher values are generally better.
+2.	Davies-Bouldin Index: Measures similarity between clusters based on within-cluster dispersion and separation. Lower values are generally better.
+3.	Calinski-Harabasz Index: Measures the ratio of between-cluster dispersion to within-cluster dispersion. Higher values generally indicate better-defined clusters.
+
+Python code:
+```python
+from sklearn.metrics import (
+    silhouette_score,
+    davies_bouldin_score,
+    calinski_harabasz_score
+)
+
+# Evaluate final K-Means model
+silhouette = silhouette_score(
+    X_pca_9,
+    final_labels,
+    sample_size=3000,
+    random_state=42
+)
+
+db_index = davies_bouldin_score(
+    X_pca_9,
+    final_labels
+)
+
+ch_index = calinski_harabasz_score(
+    X_pca_9,
+    final_labels
+)
+
+# Display evaluation results
+evaluation_results = pd.DataFrame({
+    'Metric': [
+        'Silhouette Score',
+        'Davies-Bouldin Index',
+        'Calinski-Harabasz Index'
+    ],
+    'Score': [
+        silhouette,
+        db_index,
+        ch_index
+    ]
+})
+
+display(evaluation_results)
+```
+
+Results:
+| Evaluation Metric | Score | General Interpretation |
+|---|---:|---|
+| Silhouette Score | 0.165446 | Relatively weak cluster separation |
+| Davies-Bouldin Index | 2.039151 | Indicates overlap or dispersion between clusters |
+| Calinski-Harabasz Index | 2,292.306932 | Measures separation relative to within-cluster dispersion |
+
+The Silhouette Score of 0.1654 indicates that the clusters are not strongly separated. This suggests that some customers have behavioural characteristics that overlap across the assigned segments.
+
+The Davies-Bouldin Index provides an additional indication that the clusters are not perfectly distinct.
+
+These results do not invalidate the segmentation, but they indicate that the customer groups should be interpreted as broad behavioural patterns rather than completely separate customer types.
+
+**K-Means Clustering Summary**
+
+The K-Means algorithm successfully grouped 9,912 customers into three clusters using nine principal components.
+
+| Item | Result |
+|---|---|
+| Clustering algorithm | K-Means |
+| Input dataset | X_pca_9 |
+| Number of customers | 9,912 |
+| Number of PCA components | 9 |
+| Selected clusters | 3 |
+| Random state | 42 |
+| Initialisations (n_init) | 20 |
+| Silhouette Score | 0.165446 |
+| Davies-Bouldin Index | 2.039151 |
+| Calinski-Harabasz Index | 2,292.306932 |
+| Output dataset | customer_segments |
+
+**Conclusion**
+
+The K-Means model produced three customer segments with distinct differences in purchasing activity, spending, recency, product diversity, and channel usage.
+
+The cluster profiles suggest the following preliminary interpretations:
+- Cluster 0: Moderate-value customers with relatively high average order values but less recent purchasing activity.
+- Cluster 1: Highly active customers with the greatest purchasing frequency, total spending, and behavioural diversity.
+- Cluster 2: Low-activity customers with lower spending, limited product diversity, and fewer campaign interactions.
+
+K=3 was retained as the candidate model because it provided more detailed and potentially actionable customer profiles than K=2, despite having a lower Silhouette Score.
+
+## CUSTOMER CLUSTER PROFILING
+
+After fitting the final K-Means model, the three clusters were profiled using their mean and median values across eight key behavioural features. This provides a clearer understanding of how customers in each cluster differ in purchasing activity, spending, recency, product preferences, marketing engagement, and sales channel usage.
+
+Python code:
+```python
+key_features = [
+    'purchase_frequency',
+    'total_spending_ngn',
+    'average_order_value_ngn',
+    'recency_days',
+    'category_diversity',
+    'total_campaigns',
+    'campaign_response_rate',
+    'channel_diversity'
+]
+
+cluster_summary = customer_segments.groupby('cluster')[
+    key_features
+].agg(['mean', 'median'])
+
+display(cluster_summary.round(2))
+```
+
+Cluster profiling results:
+| Behavioural feature | Cluster 0 | Cluster 1 | Cluster 2 |
+|---|---:|---:|---:|
+| Purchase frequency (mean) | 4.20 | 10.70 | 1.69 |
+| Total spending (mean) | ₦440,900.61 | ₦736,852.68 | ₦89,720.96 |
+| Average order value (mean) | ₦118,207.25 | ₦71,552.70 | ₦56,564.29 |
+| Recency in days (mean) | 223.83 | 68.88 | 234.51 |
+| Category diversity (mean) | 2.99 | 4.99 | 1.46 |
+| Total campaigns (mean) | 2.12 | 5.62 | 0.85 |
+| Campaign response rate (mean) | 0.35 | 0.33 | 0.27 |
+| Channel diversity (mean) | 2.53 | 3.65 | 1.37 |
+
+Note: The code calculates both mean and median. The table above presents the mean values for a more compact comparison; the full output also contains the median values.
+
+**Interpretation of cluster profiles**
+
+- Cluster 0 – Moderate-Value Customers: These customers make a moderate number of purchases and generate relatively high average order values. They have a longer average recency of approximately 224 days, suggesting that many have not purchased recently. Their spending and behavioural diversity indicate potential value, but their reduced recent activity may require re-engagement.
+- Cluster 1 – High-Activity Customers: This group has the highest purchase frequency, total spending, category diversity, campaign exposure, and channel diversity. Its average recency of approximately 69 days also indicates more recent purchasing activity. These customers represent the most active segment and may be suitable for loyalty programmes, retention initiatives, and cross-selling opportunities.
+- Cluster 2 – Low-Activity Customers: These customers have the lowest purchase frequency, spending, average order value, category diversity, and channel diversity. Their limited purchasing activity suggests an opportunity for targeted engagement and campaigns designed to encourage repeat purchases.
+
+**Visualizing Customer Segment Profiles**
+
+A heatmap was created to compare the mean behavioural characteristics of the three clusters. Since the features have different measurement scales, MinMaxScaler was used to normalise the cluster mean values between 0 and 1 for visual comparison.
+
+Python code:
+```python
+import seaborn as sns
+from sklearn.preprocessing import MinMaxScaler
+
+# Calculate cluster mean profiles
+heatmap_data = customer_segments.groupby('cluster')[
+    key_features
+].mean()
+
+# Scale values between 0 and 1
+heatmap_scaler = MinMaxScaler()
+
+heatmap_scaled = pd.DataFrame(
+    heatmap_scaler.fit_transform(heatmap_data),
+    index=heatmap_data.index,
+    columns=heatmap_data.columns
+)
+
+# Plot heatmap
+plt.figure(figsize=(14, 6))
+
+sns.heatmap(
+    heatmap_scaled,
+    annot=True,
+    cmap='YlGnBu',
+    fmt='.2f',
+    linewidths=0.5
+)
+
+plt.title('Customer Segment Behavioural Profile')
+plt.xlabel('Customer Behavioural Features')
+plt.ylabel('Customer Cluster')
+
+plt.tight_layout()
+plt.show()
+```
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Segment%20Behavioural%20Profile.png)
+
+**Interpretation**
+
+The heatmap provides a visual comparison of the relative behavioural profiles of the three customer segments.
+- Cluster 0 shows relatively strong average order value and moderate spending and behavioural diversity.
+- Cluster 1 demonstrates stronger purchasing activity, spending, product diversity, campaign exposure, and channel usage.
+- Cluster 2 generally records lower values across most purchasing and engagement indicators.
+
+The heatmap scaling is performed separately for each feature across the three clusters. Therefore, a value closer to 1 indicates the highest cluster mean for that particular feature, not an absolute performance score or a comparison across different features.
+
+**Overall conclusion**
+
+The cluster profiles reveal three distinguishable customer behaviour groups: moderate-value customers, high-activity customers, and low-activity customers. These profiles provide a basis for developing segment-specific marketing, retention, and customer engagement strategies.
+
+One interpretation caution: Cluster 2's lower campaign response rate should be considered alongside its low campaign exposure. A customer who was not exposed to a campaign should not automatically be interpreted as having ignored or rejected it.
+
+## BUSINESS PERFORMANCE ANALYSIS
+
+After identifying and profiling the three customer segments, the next step was to evaluate their contributions to overall business performance.
+The analysis focused on answering two important business questions:
+1.	Which customer segment generates the highest revenue?
+2.	Which customer segment should receive greater marketing attention?
+
+To answer these questions, the segments were compared using customer count, total revenue, average customer spending, purchase frequency, average order value, and return rate.
+
+Python code:
+```python
+business_performance = customer_segments.groupby('cluster').agg(
+    customer_count=('customer_id', 'nunique'),
+    total_revenue=('total_spending_ngn', 'sum'),
+    average_customer_spending=('total_spending_ngn', 'mean'),
+    average_purchase_frequency=('purchase_frequency', 'mean'),
+    average_order_value=('average_order_value_ngn', 'mean'),
+    average_return_rate=('return_rate', 'mean')
+)
+
+# Calculate customer and revenue contribution
+business_performance['customer_percentage'] = (
+    business_performance['customer_count']
+    / business_performance['customer_count'].sum() * 100
+)
+
+business_performance['revenue_percentage'] = (
+    business_performance['total_revenue']
+    / business_performance['total_revenue'].sum() * 100
+)
+
+display(business_performance.round(2))
+```
+
+Business performance results:
+| Metric | Cluster 0 | Cluster 1 | Cluster 2 |
+|---|---:|---:|---:|
+| Customer count | 2,990 | 4,219 | 2,703 |
+| Total revenue | ₦1.32bn | ₦3.11bn | ₦242.52m |
+| Average customer spending | ₦440,900.61 | ₦736,852.68 | ₦89,720.96 |
+| Average purchase frequency | 4.20 | 10.70 | 1.69 |
+| Average order value | ₦118,207.25 | ₦71,552.70 | ₦56,564.29 |
+| Average return rate | 6% | 4% | 3% |
+| Customer contribution | 30.17% | 42.56% | 27.27% |
+| Revenue contribution | 28.23% | 66.58% | 5.19% |
+
+**Interpretation of business performance**
+
+- Cluster 0: Represents 30.17% of customers and contributes 28.23% of total revenue. Although customers in this segment have the highest average order value, their lower purchase frequency and longer purchase recency limit their overall revenue contribution. Re-engagement campaigns could encourage more frequent purchases.
+- Cluster 1: Represents 42.56% of customers but generates 66.58% of total revenue. It has the highest average customer spending and purchase frequency. This is the most commercially valuable segment and should be prioritised for customer retention, loyalty programmes, and personalised cross-selling.
+- Cluster 2: Represents 27.27% of customers but contributes only 5.19% of revenue. Its low purchasing frequency and average spending suggest an opportunity for targeted activation campaigns, introductory offers, and strategies to encourage repeat purchases.
+
+**Visualising Revenue Contribution by Customer Segment**
+
+A bar chart was created to compare the total revenue generated by each customer segment.
+
+Python code:
+```python
+plt.figure(figsize=(9, 5))
+
+sns.barplot(
+    data=business_performance.reset_index(),
+    x='cluster',
+    y='total_revenue'
+)
+
+plt.title('Total Revenue Contribution by Customer Segment')
+plt.xlabel('Customer Cluster')
+plt.ylabel('Total Revenue (NGN)')
+
+plt.tight_layout()
+plt.show()
+```
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Total%20Revenue%20Contribution%20by%20Customer%20Segment.png)
+
+**Interpretation**
+
+The chart shows that Cluster 1 generates substantially more revenue than Clusters 0 and 2. Its revenue contribution is particularly significant because it generates approximately two-thirds of the total revenue while representing less than half of the customer base.
+
+**Comparing Customer Share Against Revenue Share**
+
+To understand the relative business value of each segment, customer percentage and revenue percentage were compared using a grouped bar chart.
+
+Python code:
+```python
+contribution_data = business_performance[
+    ['customer_percentage', 'revenue_percentage']
+]
+
+contribution_data.plot(
+    kind='bar',
+    figsize=(10, 6)
+)
+
+plt.title('Customer Share vs Revenue Share by Segment')
+plt.xlabel('Customer Cluster')
+plt.ylabel('Percentage (%)')
+plt.xticks(rotation=0)
+plt.legend(['Customer Share', 'Revenue Share'])
+
+plt.tight_layout()
+plt.show()
+```
+
+![](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App/blob/main/Customer%20Share%20vs%20Revenue%20Share%20by%20Segment.png)
+
+**Interpretation**
+
+The comparison highlights the differences between customer population size and revenue contribution:
+- Cluster 1 contributes a significantly higher proportion of revenue (66.58%) than its share of customers (42.56%).
+- Cluster 0 contributes 28.23% of revenue from 30.17% of customers.
+- Cluster 2 contributes only 5.19% of revenue despite representing 27.27% of customers.
+
+This suggests that customer numbers alone do not determine business value. The frequency and monetary value of customer purchases are important drivers of revenue contribution.
+
+**Business Implications and Marketing Priorities**
+
+Based on the revenue contribution analysis, the following marketing priorities were identified:
+| Customer segment | Marketing priority | Recommended strategy |
+|---|---|---|
+| Cluster 1 | Retention and growth | Loyalty rewards, personalised recommendations, cross-selling, and exclusive offers |
+| Cluster 0 | Re-engagement | Win-back campaigns, targeted promotions, and incentives to increase purchase frequency |
+| Cluster 2 | Customer activation | First-repeat-purchase incentives, introductory offers, and targeted engagement campaigns |
+
+**Overall conclusion**
+
+Cluster 1 is the strongest revenue-generating segment, contributing 66.58% of total revenue. The business should prioritise retaining these customers while developing strategies to increase their long-term value.
+
+Cluster 0 presents an opportunity to increase revenue through re-engagement and improved purchase frequency, while Cluster 2 requires targeted activation strategies to encourage more customers to become repeat purchasers.
+
+The analysis demonstrates how customer segmentation can support business decisions beyond grouping customers: it helps identify revenue-driving segments and allocate marketing resources more strategically.
+
+Technical note: The revenue figures represent the sum of total_spending_ngn for customers in each cluster, based on completed transactions. They are historical revenue contributions, not forecasts of future revenue. Also, the return rates are averages of customer-level return rates, not the overall transaction-weighted return rate.
+
+## BUSINESS INSIGHTS AND RECOMMENDATIONS
+
+The customer segmentation and business performance analyses revealed three distinct customer groups with different purchasing behaviours and revenue contributions.
+Key Business Insights
+1.	High-value customers drive revenue: Cluster 1 contributes 66.58% of total revenue from 42.56% of customers. These customers have the highest purchase frequency and average customer spending.
+2.	Moderate-value customers offer growth opportunities: Cluster 0 contributes 28.23% of revenue. Despite having the highest average order value, their relatively low purchase frequency and longer recency suggest opportunities to improve customer engagement.
+3.	Low-activity customers require activation: Cluster 2 represents 27.27% of customers but contributes only 5.19% of revenue, indicating low purchasing activity and spending.
+4.	Customer behaviour varies significantly: Differences in purchase frequency, spending, recency, product diversity, and channel usage demonstrate the importance of targeted customer strategies rather than treating all customers alike.
+
+**Business Recommendations**
+| Customer segment | Recommended business strategy |
+|---|---|
+| Cluster 1 – High-Activity Customers | Prioritise retention through loyalty programmes, personalised offers, and cross-selling. |
+| Cluster 0 – Moderate-Value Customers | Use re-engagement campaigns and targeted promotions to increase purchase frequency. |
+| Cluster 2 – Low-Activity Customers | Introduce activation campaigns, introductory incentives, and repeat-purchase offers. |
+
+**Overall Recommendation**
+
+The business should prioritise retaining Cluster 1 because it generates the largest share of revenue. At the same time, Cluster 0 should be targeted for increased purchasing activity, while Cluster 2 should receive focused activation campaigns.
+
+Implementing these segment-specific strategies can help improve customer retention, increase purchase frequency, and strengthen overall revenue performance.
+
+## MODEL DEPLOYMENT AND APPLICATION DEVELOPMENT
+
+After completing customer segmentation and evaluating the final K-Means model, the trained model and preprocessing objects were saved for deployment.
+
+**Saving Model Artifacts**
+
+The trained model and essential preprocessing components were packaged into a dictionary and saved using Joblib. This ensures that the same preprocessing steps and trained models can be reused when making predictions on new customer records.
+
+Python code:
+```python
+import joblib
+import os
+
+# Create a folder for model artifacts
+os.makedirs("artifacts", exist_ok=True)
+
+# Package the trained model and preprocessing objects
+model_artifacts = {
+    "scaler": scaler,
+    "pca": pca_9,
+    "kmeans": final_kmeans,
+    "income_median": income_median,
+    "selected_features": selected_features,
+    "log_features": log_features,
+    "continuous_features": continuous_features,
+    "binary_features": binary_features,
+    "feature_order": model_features.columns.tolist()
+}
+
+# Save artifacts
+joblib.dump(
+    model_artifacts,
+    "artifacts/customer_segmentation_model.pkl"
+)
+
+print("Model artifacts saved successfully.")
+
+The saved artifact was downloaded from Google Colab using:
+from google.colab import files
+
+files.download("artifacts/customer_segmentation_model.pkl")
+```
+
+**Streamlit Application Development and Deployment**
+
+A Streamlit web application was developed to make the customer segmentation model accessible for practical business use.
+
+The application was developed using VS Code, uploaded to GitHub, and connected to Streamlit Community Cloud for deployment.
+
+The application supports:
+- Individual customer segmentation.
+- Bulk customer segmentation through CSV uploads.
+- Input validation and processing.
+- Identification of customer segments.
+- Segment-based business recommendations.
+- Summary visualisations.
+- Downloading segmentation results as CSV files.
+
+**Successfully deployed**
+
+Live application: https://oluwaseun-customer-segmentation-app.streamlit.app/
+
+**Deployment Outcome**
+
+The deployment transformed the customer segmentation model into an interactive application that allows users to segment individual customers or process multiple customer records without running the underlying Python notebook.
+
+This makes the project more practical by providing businesses with an accessible tool for identifying customer groups and supporting data-driven marketing decisions.
