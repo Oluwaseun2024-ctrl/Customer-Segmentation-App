@@ -1,21 +1,21 @@
 # CUSTOMER SEGMENTATION AND BEHAVIOURAL ANALYTICS
 
 Table of Content
-- Project Overview
-- Data Understanding
-- Data Preparation and Cleaning
-- Exploratory Data Analysis (EDA)
-- Customer-Level Feature Engineering
-- Construction of the Final Customer-Level Dataset
-- Feature Selection and Preprocessing
-- Feature Transformation
-- Feature Scaling
-- Dimensionality Reduction (PCA)
-- Customer Segmentation Using K-Means
-- Customer Cluster Profiling
-- Business Performance Analysis
-- Business Insights and Recommendations
-- Model Deployment and Application Development
+- [Project Overview](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#project-overview)
+- [Data Understanding](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#data-understanding)
+- [Data Preparation and Cleaning](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#data-preparation-and-cleaning)
+- [Exploratory Data Analysis (EDA)](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#exploratory-data-analysis-eda)
+- [Customer-Level Feature Engineering](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#customer-level-feature-engineering)
+- [Construction of the Final Customer-Level Dataset](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#construction-of-the-final-customer-level-dataset)
+- [Feature Selection and Preprocessing](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#feature-selection-and-preprocessing)
+- [Feature Transformation](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#feature-transformation)
+- [Feature Scaling](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#feature-scaling)
+- [Dimensionality Reduction (PCA)](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#principal-component-analysis-pca)
+- [Customer Segmentation Using K-Means](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#customer-segmentation-using-k-means-clustering)
+- [Customer Cluster Profiling](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#customer-cluster-profiling)
+- [Business Performance Analysis](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#business-performance-analysis)
+- [Business Insights and Recommendations](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#business-insights-and-recommendations)
+- [Model Deployment and Application Development](https://github.com/Oluwaseun2024-ctrl/Customer-Segmentation-App#model-deployment-and-application-development)
 
 ## PROJECT OVERVIEW
 **Project Description**
